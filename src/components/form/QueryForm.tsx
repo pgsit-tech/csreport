@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Search } from 'lucide-react';
+import { fetchWithFallback } from '@/lib/config';
 
 interface QueryFormProps {
   onQueryResult: (data: FormData | null) => void;
@@ -33,12 +34,10 @@ export function QueryForm({ onQueryResult }: QueryFormProps) {
     setQueryResult(null);
 
     try {
-      // 在生产环境中，这将指向Cloudflare Worker
-      const apiUrl = process.env.NODE_ENV === 'production'
-        ? 'https://your-worker.your-domain.workers.dev/api/query'
-        : '/api/query';
-
-      const response = await fetch(`${apiUrl}?code=${encodeURIComponent(data.queryCode)}`);
+      // 使用带回退机制的API调用
+      const response = await fetchWithFallback('query', {
+        method: 'GET',
+      }, `code=${encodeURIComponent(data.queryCode)}`);
       const result = await response.json();
 
       if (result.success && result.data) {

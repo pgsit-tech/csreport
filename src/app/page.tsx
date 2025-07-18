@@ -7,7 +7,7 @@ import { QueryForm } from '@/components/form/QueryForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Search, Plus } from 'lucide-react';
-import { getApiUrl } from '@/lib/config';
+import { fetchWithFallback } from '@/lib/config';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<'new' | 'query'>('new');
@@ -15,7 +15,7 @@ export default function Home() {
 
   const handleSubmitForm = async (formData: FormData): Promise<{ success: boolean; queryCode?: string; message?: string }> => {
     try {
-      const response = await fetch(getApiUrl('submit'), {
+      const response = await fetchWithFallback('submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

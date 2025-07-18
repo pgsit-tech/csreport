@@ -5,13 +5,13 @@ import { FormData } from '@/types/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import {
   Download,
@@ -22,6 +22,7 @@ import {
   User,
   FileText
 } from 'lucide-react';
+import { fetchWithFallback } from '@/lib/config';
 
 interface AdminStats {
   totalForms: number;
@@ -60,11 +61,7 @@ export default function AdminPage() {
   const fetchForms = async () => {
     try {
       setLoading(true);
-      const apiUrl = process.env.NODE_ENV === 'production'
-        ? 'https://your-worker.your-domain.workers.dev/api/admin/forms'
-        : '/api/admin/forms';
-
-      const response = await fetch(apiUrl);
+      const response = await fetchWithFallback('adminForms');
       const result = await response.json();
 
       if (result.success) {
@@ -80,11 +77,7 @@ export default function AdminPage() {
 
   const handleExportAll = async () => {
     try {
-      const apiUrl = process.env.NODE_ENV === 'production'
-        ? 'https://your-worker.your-domain.workers.dev/api/admin/export'
-        : '/api/admin/export';
-
-      const response = await fetch(apiUrl, {
+      const response = await fetchWithFallback('adminExport', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
