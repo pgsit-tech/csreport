@@ -12,7 +12,8 @@ export const API_CONFIG = {
     query: '/api/query',
     sendEmail: '/api/send-email',
     adminForms: '/api/admin/forms',
-    adminExport: '/api/admin/export'
+    adminExport: '/api/admin/export',
+    health: '/health'
   }
 };
 
@@ -36,51 +37,73 @@ export async function fetchWithFallback(
   const fallbackUrl = `${API_CONFIG.fallbackBaseUrl}${endpointPath}${queryString}`;
 
   // 设置超时时间
-  const timeoutMs = 10000; // 10秒超时
+  const timeoutMs = 15000; // 增加到15秒超时
+
+  // 增强的请求选项
+  const enhancedOptions: RequestInit = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Cache-Control': 'no-cache',
+      ...options.headers,
+    },
+    mode: 'cors',
+    credentials: 'omit', // 不发送凭据以避免CORS问题
+  };
+
+  console.log(`🚀 API调用: ${endpoint}`, {
+    primaryUrl,
+    fallbackUrl,
+    method: options.method || 'GET',
+    headers: enhancedOptions.headers
+  });
 
   try {
     // 首先尝试自定义域名
-    console.log('尝试连接自定义域名:', primaryUrl);
+    console.log('🔗 尝试连接自定义域名:', primaryUrl);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     const response = await fetch(primaryUrl, {
-      ...options,
+      ...enhancedOptions,
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
+    console.log(`📡 自定义域名响应:`, response.status, response.statusText);
 
     if (response.ok) {
-      console.log('自定义域名连接成功');
+      console.log('✅ 自定义域名连接成功');
       return response;
     }
-    throw new Error(`HTTP ${response.status}`);
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
   } catch (error) {
-    console.warn('自定义域名连接失败，尝试备用域名:', error);
+    console.warn('⚠️ 自定义域名连接失败，尝试备用域名:', error);
 
     try {
       // 回退到 workers.dev 域名
-      console.log('尝试连接备用域名:', fallbackUrl);
+      console.log('🔗 尝试连接备用域名:', fallbackUrl);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const response = await fetch(fallbackUrl, {
-        ...options,
+        ...enhancedOptions,
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
+      console.log(`📡 备用域名响应:`, response.status, response.statusText);
 
       if (response.ok) {
-        console.log('备用域名连接成功');
+        console.log('✅ 备用域名连接成功');
         return response;
       }
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
     } catch (fallbackError) {
-      console.error('所有API端点都无法连接:', fallbackError);
+      console.error('❌ 所有API端点都无法连接:', fallbackError);
       throw new Error('无法连接到服务器，请检查网络连接或稍后重试');
     }
   }

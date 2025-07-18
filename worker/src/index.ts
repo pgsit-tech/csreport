@@ -10,32 +10,22 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// CORS配置 - 支持更多域名和更宽松的策略
-app.use('*', cors({
-  origin: [
-    'https://cs-report-system.pages.dev',
-    'https://*.pages.dev',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://20990909.xyz',
-    'https://*.20990909.xyz'
-  ],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  credentials: true,
-}));
-
-// 额外的 CORS 处理中间件
+// 简化的 CORS 中间件 - 更宽松的配置
 app.use('*', async (c, next) => {
+  // 获取请求的 Origin
+  const origin = c.req.header('Origin') || '*';
+
   // 处理预检请求
   if (c.req.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, HEAD',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, Origin',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma',
+        'Access-Control-Allow-Credentials': 'true',
         'Access-Control-Max-Age': '86400',
+        'Vary': 'Origin',
       },
     });
   }
@@ -43,9 +33,11 @@ app.use('*', async (c, next) => {
   await next();
 
   // 为所有响应添加 CORS 头
-  c.res.headers.set('Access-Control-Allow-Origin', '*');
+  c.res.headers.set('Access-Control-Allow-Origin', origin);
   c.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
-  c.res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  c.res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma');
+  c.res.headers.set('Access-Control-Allow-Credentials', 'true');
+  c.res.headers.set('Vary', 'Origin');
 });
 
 // 健康检查端点
