@@ -1,8 +1,8 @@
 // API配置
 export const API_CONFIG = {
-  // 在生产环境中，这些URL将指向Cloudflare Worker
+  // 使用自定义域名解决国内网络访问问题
   baseUrl: process.env.NODE_ENV === 'production'
-    ? 'https://cs-report-worker.itsupport-5c8.workers.dev'
+    ? 'https://csreport-api.20990909.xyz'
     : '',
   
   endpoints: {

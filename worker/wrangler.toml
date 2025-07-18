@@ -16,10 +16,10 @@ FROM_EMAIL = "noreply@your-domain.com"
 # 生产环境密钥（通过 wrangler secret put 设置）
 # EMAIL_API_KEY = "your-email-api-key"
 
-# 路由配置 - 暂时注释掉，使用默认的workers.dev域名
-# [[routes]]
-# pattern = "your-domain.com/api/*"
-# zone_name = "your-domain.com"
+# 路由配置 - 自定义域名
+[[routes]]
+pattern = "csreport-api.20990909.xyz/*"
+zone_name = "20990909.xyz"
 
 # 开发环境配置
 [env.development]

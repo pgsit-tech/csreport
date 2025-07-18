@@ -10,12 +10,61 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// CORS配置
+// CORS配置 - 支持更多域名和更宽松的策略
 app.use('*', cors({
-  origin: ['https://your-domain.pages.dev', 'http://localhost:3000'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  origin: [
+    'https://cs-report-system.pages.dev',
+    'https://*.pages.dev',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://20990909.xyz',
+    'https://*.20990909.xyz'
+  ],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  credentials: true,
 }));
+
+// 额外的 CORS 处理中间件
+app.use('*', async (c, next) => {
+  // 处理预检请求
+  if (c.req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, HEAD',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, Origin',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+
+  await next();
+
+  // 为所有响应添加 CORS 头
+  c.res.headers.set('Access-Control-Allow-Origin', '*');
+  c.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+  c.res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+});
+
+// 健康检查端点
+app.get('/', async (c) => {
+  return c.json({
+    success: true,
+    message: 'CS Report API is running',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
+app.get('/health', async (c) => {
+  return c.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // 提交表单
 app.post('/api/submit', async (c) => {
