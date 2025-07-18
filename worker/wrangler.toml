@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "cs-report-db"
-database_id = "your-database-id"
+database_id = "1ee13c57-c125-4b49-9a6c-88f38b2f80ec"
 
 # 环境变量
 [vars]
@@ -16,10 +16,10 @@ FROM_EMAIL = "noreply@your-domain.com"
 # 生产环境密钥（通过 wrangler secret put 设置）
 # EMAIL_API_KEY = "your-email-api-key"
 
-# 路由配置
-[[routes]]
-pattern = "your-domain.com/api/*"
-zone_name = "your-domain.com"
+# 路由配置 - 暂时注释掉，使用默认的workers.dev域名
+# [[routes]]
+# pattern = "your-domain.com/api/*"
+# zone_name = "your-domain.com"
 
 # 开发环境配置
 [env.development]

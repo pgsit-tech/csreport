@@ -1,8 +1,8 @@
 // API配置
 export const API_CONFIG = {
   // 在生产环境中，这些URL将指向Cloudflare Worker
-  baseUrl: process.env.NODE_ENV === 'production' 
-    ? 'https://your-worker.your-domain.workers.dev'
+  baseUrl: process.env.NODE_ENV === 'production'
+    ? 'https://cs-report-worker.itsupport-5c8.workers.dev'
     : '',
   
   endpoints: {
