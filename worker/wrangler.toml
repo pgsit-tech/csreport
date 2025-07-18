@@ -1,0 +1,29 @@
+name = "cs-report-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "cs-report-db"
+database_id = "your-database-id"
+
+# 环境变量
+[vars]
+FROM_EMAIL = "noreply@your-domain.com"
+
+# 生产环境密钥（通过 wrangler secret put 设置）
+# EMAIL_API_KEY = "your-email-api-key"
+
+# 路由配置
+[[routes]]
+pattern = "your-domain.com/api/*"
+zone_name = "your-domain.com"
+
+# 开发环境配置
+[env.development]
+name = "cs-report-worker-dev"
+
+[env.development.vars]
+FROM_EMAIL = "dev@your-domain.com"
