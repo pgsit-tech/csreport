@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 测试页面</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 3px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>CS Report API 测试页面</h1>
+    
+    <div class="test-section">
+        <h2>1. 健康检查测试</h2>
+        <button onclick="testHealth()">测试健康检查</button>
+        <div id="health-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. CORS 预检测试</h2>
+        <button onclick="testCORS()">测试 CORS</button>
+        <div id="cors-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 表单提交测试</h2>
+        <button onclick="testSubmit()">测试表单提交</button>
+        <div id="submit-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 查询测试</h2>
+        <button onclick="testQuery()">测试查询</button>
+        <div id="query-result"></div>
+    </div>
+
+    <script>
+        const API_CONFIG = {
+            primaryBaseUrl: 'https://csreport-api.20990909.xyz',
+            fallbackBaseUrl: 'https://cs-report-worker.itsupport-5c8.workers.dev',
+        };
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            element.appendChild(div);
+        }
+
+        function clearResults(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        async function fetchWithFallback(endpoint, options = {}) {
+            const urls = [
+                `${API_CONFIG.primaryBaseUrl}${endpoint}`,
+                `${API_CONFIG.fallbackBaseUrl}${endpoint}`
+            ];
+
+            for (let i = 0; i < urls.length; i++) {
+                try {
+                    console.log(`尝试连接: ${urls[i]}`);
+                    const response = await fetch(urls[i], {
+                        ...options,
+                        mode: 'cors',
+                        credentials: 'omit',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            ...options.headers
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        console.log(`连接成功: ${urls[i]}`);
+                        return response;
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                } catch (error) {
+                    console.warn(`连接失败 ${urls[i]}:`, error);
+                    if (i === urls.length - 1) throw error;
+                }
+            }
+        }
+
+        async function testHealth() {
+            clearResults('health-result');
+            log('health-result', '开始健康检查测试...', 'info');
+            
+            try {
+                const response = await fetchWithFallback('/health');
+                const data = await response.json();
+                log('health-result', `✅ 健康检查成功`, 'success');
+                log('health-result', `<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+            } catch (error) {
+                log('health-result', `❌ 健康检查失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCORS() {
+            clearResults('cors-result');
+            log('cors-result', '开始 CORS 预检测试...', 'info');
+            
+            try {
+                const response = await fetch(`${API_CONFIG.fallbackBaseUrl}/api/submit`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                log('cors-result', `✅ CORS 预检成功 (${response.status})`, 'success');
+                log('cors-result', `CORS 头信息:`, 'info');
+                
+                const corsHeaders = {};
+                response.headers.forEach((value, key) => {
+                    if (key.toLowerCase().includes('access-control')) {
+                        corsHeaders[key] = value;
+                    }
+                });
+                
+                log('cors-result', `<pre>${JSON.stringify(corsHeaders, null, 2)}</pre>`, 'info');
+            } catch (error) {
+                log('cors-result', `❌ CORS 预检失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSubmit() {
+            clearResults('submit-result');
+            log('submit-result', '开始表单提交测试...', 'info');
+            
+            const testData = {
+                companyName: '测试公司',
+                address: '测试地址',
+                contactPerson: '测试联系人',
+                mobile: '13800138000',
+                companySize: '50-100人',
+                officeSize: '500-1000平米',
+                mainBusiness: '测试业务',
+                products: '测试产品',
+                serviceNeeds: '测试需求',
+                visitDate: new Date().toISOString().split('T')[0],
+                salesperson: '测试业务员'
+            };
+            
+            try {
+                const response = await fetchWithFallback('/api/submit', {
+                    method: 'POST',
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.json();
+                log('submit-result', `✅ 表单提交成功`, 'success');
+                log('submit-result', `<pre>${JSON.stringify(result, null, 2)}</pre>`, 'info');
+            } catch (error) {
+                log('submit-result', `❌ 表单提交失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testQuery() {
+            clearResults('query-result');
+            log('query-result', '开始查询测试...', 'info');
+            
+            try {
+                const response = await fetchWithFallback('/api/query?code=TEST001');
+                const result = await response.json();
+                log('query-result', `✅ 查询测试完成`, 'success');
+                log('query-result', `<pre>${JSON.stringify(result, null, 2)}</pre>`, 'info');
+            } catch (error) {
+                log('query-result', `❌ 查询测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载时自动运行健康检查
+        window.onload = function() {
+            testHealth();
+        };
+    </script>
+</body>
+</html>

@@ -1,9 +1,9 @@
 // API配置
 export const API_CONFIG = {
-  // 主要API URL（自定义域名）
-  primaryBaseUrl: 'https://csreport-api.20990909.xyz',
-  // 备用API URL（workers.dev域名）
-  fallbackBaseUrl: 'https://cs-report-worker.itsupport-5c8.workers.dev',
+  // 临时使用 workers.dev 域名作为主要域名，直到 DNS 配置生效
+  primaryBaseUrl: 'https://cs-report-worker.itsupport-5c8.workers.dev',
+  // 备用API URL（自定义域名）
+  fallbackBaseUrl: 'https://csreport-api.20990909.xyz',
   // 开发环境
   devBaseUrl: '',
 
