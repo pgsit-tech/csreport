@@ -34,10 +34,12 @@ export function formatDateTime(date: Date): string {
   return date.toISOString();
 }
 
-// 生成PDF文件名
-export function generatePDFFileName(companyName: string, date: string): string {
+// 生成PDF文件名：客户名称+销售人员+日期
+export function generatePDFFileName(companyName: string, salesperson: string, date: string): string {
   const cleanCompanyName = companyName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
-  return `${cleanCompanyName}_${date}.pdf`;
+  const cleanSalesperson = (salesperson || '未知销售').replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+  const cleanDate = date.replace(/[^0-9-]/g, '');
+  return `${cleanCompanyName}_${cleanSalesperson}_${cleanDate}.pdf`;
 }
 
 // 验证查询码格式

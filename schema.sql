@@ -25,8 +25,9 @@ CREATE TABLE IF NOT EXISTS form_submissions (
   main_business TEXT NOT NULL,
   products TEXT NOT NULL,
   service_needs TEXT NOT NULL,
+  salesperson TEXT NOT NULL,
   chat_records TEXT,
-  
+
   -- 系统字段
   report_date TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

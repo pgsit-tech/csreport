@@ -23,7 +23,10 @@ export interface FormData {
   products: string;
   serviceNeeds: string;
   chatRecords: string;
-  
+
+  // 销售信息
+  salesperson: string;
+
   // 系统字段
   createdAt: string;
   updatedAt: string;
@@ -68,4 +71,5 @@ export const formFields = {
   products: { label: '产品', required: true },
   serviceNeeds: { label: '服务需求', required: true },
   chatRecords: { label: '聊天记录', required: false },
+  salesperson: { label: '销售人员', required: true },
 } as const;

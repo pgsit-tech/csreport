@@ -20,9 +20,13 @@ import {
   Calendar,
   Building,
   User,
-  FileText
+  FileText,
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { fetchWithFallback } from '@/lib/config';
+import LoginForm from '@/components/admin/LoginForm';
+import AdminSettings from '@/components/admin/AdminSettings';
 
 interface AdminStats {
   totalForms: number;
@@ -32,6 +36,9 @@ interface AdminStats {
 }
 
 export default function AdminPage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedForms, setSelectedForms] = useState<string[]>([]);
   const [forms, setForms] = useState<FormData[]>([]);
   const [filteredForms, setFilteredForms] = useState<FormData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +50,55 @@ export default function AdminPage() {
     thisMonthForms: 0
   });
 
+  // 检查登录状态
   useEffect(() => {
-    fetchForms();
+    const loginStatus = localStorage.getItem('admin_logged_in');
+    setIsLoggedIn(loginStatus === 'true');
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchForms();
+    }
+  }, [isLoggedIn]);
+
+  // 登录处理
+  const handleLogin = async (username: string, password: string): Promise<boolean> => {
+    // 简单的本地验证，实际项目中应该调用后端API
+    const storedUsername = localStorage.getItem('admin_username') || 'admin';
+    const storedPassword = localStorage.getItem('admin_password') || 'admin123';
+
+    if (username === storedUsername && password === storedPassword) {
+      localStorage.setItem('admin_logged_in', 'true');
+      setIsLoggedIn(true);
+      return true;
+    }
+    return false;
+  };
+
+  // 登出处理
+  const handleLogout = () => {
+    localStorage.setItem('admin_logged_in', 'false');
+    setIsLoggedIn(false);
+    setSelectedForms([]);
+  };
+
+  // 选择表单处理
+  const handleSelectForm = (formId: string) => {
+    setSelectedForms(prev =>
+      prev.includes(formId)
+        ? prev.filter(id => id !== formId)
+        : [...prev, formId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedForms.length === filteredForms.length) {
+      setSelectedForms([]);
+    } else {
+      setSelectedForms(filteredForms.map(form => form.id).filter((id): id is string => Boolean(id)));
+    }
+  };
 
   useEffect(() => {
     // 过滤表单数据
@@ -102,6 +155,40 @@ export default function AdminPage() {
     }
   };
 
+  // 批量导出选中的表单
+  const handleExportSelected = async () => {
+    if (selectedForms.length === 0) {
+      alert('请先选择要导出的表单');
+      return;
+    }
+
+    try {
+      const selectedFormData = forms.filter(form => form.id && selectedForms.includes(form.id));
+      const response = await fetchWithFallback('adminExport', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ forms: selectedFormData }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `批量客户报告_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('批量导出失败:', error);
+      alert('批量导出失败，请重试');
+    }
+  };
+
   const handleViewForm = (form: FormData) => {
     // 在新窗口中打开表单详情
     const queryParams = new URLSearchParams({
@@ -121,6 +208,16 @@ export default function AdminPage() {
     });
   };
 
+  // 如果未登录，显示登录页面
+  if (!isLoggedIn) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
+
+  // 如果显示设置页面
+  if (showSettings) {
+    return <AdminSettings onClose={() => setShowSettings(false)} />;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -136,9 +233,23 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
         {/* 头部 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">管理后台</h1>
-          <p className="text-gray-600">查看和管理所有客户报告</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {localStorage.getItem('system_name') || '业务员见客报告系统'} - 管理后台
+            </h1>
+            <p className="text-gray-600">查看和管理所有客户报告</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowSettings(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              设置
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              登出
+            </Button>
+          </div>
         </div>
 
         {/* 统计卡片 */}
@@ -208,9 +319,15 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="flex gap-2">
+                {selectedForms.length > 0 && (
+                  <Button onClick={handleExportSelected} variant="outline" className="flex items-center gap-2">
+                    <Download className="h-4 w-4" />
+                    导出选中 ({selectedForms.length})
+                  </Button>
+                )}
                 <Button onClick={handleExportAll} className="flex items-center gap-2">
                   <Download className="h-4 w-4" />
-                  导出Excel
+                  导出全部
                 </Button>
               </div>
             </div>
@@ -229,10 +346,19 @@ export default function AdminPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedForms.length === filteredForms.length && filteredForms.length > 0}
+                        onChange={handleSelectAll}
+                        className="rounded"
+                      />
+                    </TableHead>
                     <TableHead>查询码</TableHead>
                     <TableHead>公司名称</TableHead>
                     <TableHead>联系人</TableHead>
                     <TableHead>手机号</TableHead>
+                    <TableHead>销售人员</TableHead>
                     <TableHead>报告日期</TableHead>
                     <TableHead>创建时间</TableHead>
                     <TableHead>操作</TableHead>
@@ -241,6 +367,14 @@ export default function AdminPage() {
                 <TableBody>
                   {filteredForms.map((form) => (
                     <TableRow key={form.id}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={form.id ? selectedForms.includes(form.id) : false}
+                          onChange={() => form.id && handleSelectForm(form.id)}
+                          className="rounded"
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-sm">
                         {form.queryCode}
                       </TableCell>
@@ -249,6 +383,7 @@ export default function AdminPage() {
                       </TableCell>
                       <TableCell>{form.contactPerson}</TableCell>
                       <TableCell>{form.mobile}</TableCell>
+                      <TableCell>{form.salesperson || '未指定'}</TableCell>
                       <TableCell>{form.reportDate}</TableCell>
                       <TableCell>{formatDate(form.createdAt)}</TableCell>
                       <TableCell>

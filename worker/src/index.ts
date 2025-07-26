@@ -256,20 +256,36 @@ app.get('/api/admin/forms', async (c) => {
   }
 });
 
-// 管理接口 - 导出表单
+// 管理接口 - 导出表单（支持批量导出）
 app.post('/api/admin/export', async (c) => {
   try {
-    const { forms } = await c.req.json();
+    const requestData = await c.req.json();
+    let forms = [];
+
+    // 支持两种请求格式：
+    // 1. { forms: [...] } - 直接传递表单数据
+    // 2. { formIds: [...] } - 传递表单ID，需要从数据库查询
+    if (requestData.forms) {
+      forms = requestData.forms;
+    } else if (requestData.formIds && requestData.formIds.length > 0) {
+      // 从数据库查询指定的表单
+      const placeholders = requestData.formIds.map(() => '?').join(',');
+      const query = `SELECT * FROM forms WHERE id IN (${placeholders})`;
+      const result = await c.env.DB.prepare(query).bind(...requestData.formIds).all();
+      forms = result.results.map(dbDataToFormFormat);
+    } else {
+      return c.json({ success: false, message: '没有数据可导出' }, 400);
+    }
 
     if (!forms || forms.length === 0) {
       return c.json({ success: false, message: '没有数据可导出' }, 400);
     }
 
-    // 生成CSV内容
+    // 生成CSV内容，添加销售人员字段
     const headers = [
       '查询码', '自定义查询码', '公司名称', '地址', '电话', '网站',
       '联系人', '手机', '微信', '公司人数', '办公室大小',
-      '主要业务', '产品', '服务需求', '聊天记录',
+      '主要业务', '产品', '服务需求', '销售人员', '聊天记录',
       '报告日期', '创建时间', '更新时间'
     ];
 
@@ -288,6 +304,7 @@ app.post('/api/admin/export', async (c) => {
       form.mainBusiness,
       form.products,
       form.serviceNeeds,
+      form.salesperson || '未指定',
       form.chatRecords || '',
       form.reportDate,
       new Date(form.createdAt).toLocaleString('zh-CN'),

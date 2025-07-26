@@ -82,6 +82,10 @@ export async function generatePDF(formData: FormData): Promise<{ pdfBlob: Blob, 
           <td style="width: 30%; padding: 8px; font-weight: bold;">服务需求:</td>
           <td style="padding: 8px;">${formData.serviceNeeds}</td>
         </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">负责销售:</td>
+          <td style="padding: 8px;">${formData.salesperson || '未指定'}</td>
+        </tr>
       </table>
     </div>
     
@@ -135,8 +139,8 @@ export async function generatePDF(formData: FormData): Promise<{ pdfBlob: Blob, 
       heightLeft -= pageHeight;
     }
     
-    // 生成PDF文件名
-    const fileName = generatePDFFileName(formData.companyName, formData.reportDate);
+    // 生成PDF文件名：客户名称+销售人员+日期
+    const fileName = generatePDFFileName(formData.companyName, formData.salesperson, formData.reportDate);
     
     // 生成PDF Blob
     const pdfBlob = pdf.output('blob');

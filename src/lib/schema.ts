@@ -14,6 +14,7 @@ export const formSchema = z.object({
   products: z.string().min(1, { message: '产品不能为空' }),
   serviceNeeds: z.string().min(1, { message: '服务需求不能为空' }),
   chatRecords: z.string().optional(),
+  salesperson: z.string().min(1, { message: '销售人员不能为空' }),
   customQueryCode: z.string().optional(),
   reportDate: z.string().optional()
 });

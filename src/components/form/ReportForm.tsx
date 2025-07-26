@@ -48,6 +48,7 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
       products: initialData.products,
       serviceNeeds: initialData.serviceNeeds,
       chatRecords: initialData.chatRecords || '',
+      salesperson: initialData.salesperson || '',
       customQueryCode: initialData.customQueryCode || '',
       reportDate: initialData.reportDate || formatDate(new Date())
     } : {
@@ -300,6 +301,18 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
                   )}
                 </div>
                 
+                <div>
+                  <Label htmlFor="salesperson">销售人员 *</Label>
+                  <Input
+                    id="salesperson"
+                    {...register('salesperson')}
+                    placeholder="请输入负责的销售人员姓名"
+                  />
+                  {errors.salesperson && (
+                    <p className="text-red-500 text-sm mt-1">{errors.salesperson.message}</p>
+                  )}
+                </div>
+
                 <div>
                   <Label htmlFor="chatRecords">聊天记录</Label>
                   <Textarea
