@@ -108,15 +108,15 @@ app.post('/api/submit', async (c) => {
       INSERT INTO form_submissions (
         id, query_code, custom_query_code, company_name, address, phone, website,
         contact_person, mobile, wechat, company_size, office_size,
-        main_business, products, service_needs, chat_records,
+        main_business, products, service_needs, salesperson, chat_records,
         report_date, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       dbData.id, dbData.query_code, dbData.custom_query_code, dbData.company_name,
       dbData.address, dbData.phone, dbData.website, dbData.contact_person,
       dbData.mobile, dbData.wechat, dbData.company_size, dbData.office_size,
-      dbData.main_business, dbData.products, dbData.service_needs, dbData.chat_records,
-      dbData.report_date, dbData.created_at, dbData.updated_at
+      dbData.main_business, dbData.products, dbData.service_needs, dbData.salesperson,
+      dbData.chat_records, dbData.report_date, dbData.created_at, dbData.updated_at
     ).run();
 
     return c.json({

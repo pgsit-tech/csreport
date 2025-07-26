@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FormData } from '@/types/form';
 import { ReportForm } from '@/components/form/ReportForm';
 import { QueryForm } from '@/components/form/QueryForm';
@@ -12,6 +12,49 @@ import { fetchWithFallback } from '@/lib/config';
 export default function Home() {
   const [currentView, setCurrentView] = useState<'new' | 'query'>('new');
   const [queryResult, setQueryResult] = useState<FormData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 检查 URL 参数，如果有查询码则自动查询
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryCode = urlParams.get('code');
+    const viewMode = urlParams.get('view');
+
+    if (queryCode) {
+      setIsLoading(true);
+      handleAutoQuery(queryCode, viewMode === 'readonly');
+    }
+  }, []);
+
+  // 自动查询函数
+  const handleAutoQuery = async (queryCode: string, readonly: boolean = false) => {
+    try {
+      const response = await fetchWithFallback('query', {}, `code=${encodeURIComponent(queryCode)}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setQueryResult(data.data);
+          setCurrentView('new'); // 显示表单视图
+
+          // 如果是只读模式，可以添加额外的状态标识
+          if (readonly) {
+            // 可以在这里设置只读状态
+            console.log('只读模式查看表单');
+          }
+        } else {
+          alert('未找到对应的报告记录');
+        }
+      } else {
+        alert('查询失败，请检查查询码是否正确');
+      }
+    } catch (error) {
+      console.error('自动查询失败:', error);
+      alert('查询失败，请稍后重试');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmitForm = async (formData: FormData): Promise<{ success: boolean; queryCode?: string; message?: string }> => {
     try {
@@ -43,12 +86,26 @@ export default function Home() {
     setCurrentView('new');
   };
 
+  // 如果正在加载，显示加载状态
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">正在加载报告...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
         {/* 头部 */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">业务员见客报告系统</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {typeof window !== 'undefined' ? (localStorage.getItem('system_name') || '业务员见客报告系统') : '业务员见客报告系统'}
+          </h1>
           <p className="text-gray-600">创建、查询和管理客户拜访报告</p>
         </div>
 
