@@ -27,6 +27,7 @@ import {
 import { fetchWithFallback } from '@/lib/config';
 import LoginForm from '@/components/admin/LoginForm';
 import AdminSettings from '@/components/admin/AdminSettings';
+import { exportFormsAsZip, exportAllFormsAsZip } from '@/lib/batch-pdf-export';
 
 interface AdminStats {
   totalForms: number;
@@ -130,31 +131,17 @@ export default function AdminPage() {
 
   const handleExportAll = async () => {
     try {
-      const response = await fetchWithFallback('adminExport', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ forms: filteredForms }),
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-
-        // 根据内容类型确定文件扩展名
-        const contentType = response.headers.get('content-type');
-        const isHtml = contentType?.includes('text/html');
-        const extension = isHtml ? 'html' : 'pdf';
-
-        a.download = `批量客户报告_${new Date().toISOString().split('T')[0]}.${extension}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      if (filteredForms.length === 0) {
+        alert('没有数据可导出');
+        return;
       }
+
+      // 显示加载提示
+      console.log('正在生成PDF文件，请稍候...');
+
+      // 使用前端PDF生成和压缩功能
+      await exportAllFormsAsZip(filteredForms);
+
     } catch (error) {
       console.error('导出失败:', error);
       alert('导出失败，请重试');
@@ -170,37 +157,23 @@ export default function AdminPage() {
 
     try {
       const selectedFormData = forms.filter(form => form.id && selectedForms.includes(form.id));
-      const response = await fetchWithFallback('adminExport', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ forms: selectedFormData }),
-      });
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-
-        // 根据内容类型和数量确定文件名
-        const contentType = response.headers.get('content-type');
-        const isHtml = contentType?.includes('text/html');
-        const extension = isHtml ? 'html' : 'pdf';
-
-        if (selectedFormData.length === 1) {
-          const form = selectedFormData[0];
-          a.download = `${form.companyName}_${form.salesperson || '未知业务员'}_${new Date(form.reportDate || form.createdAt).toLocaleDateString().replace(/\//g, '-')}.${extension}`;
-        } else {
-          a.download = `批量客户报告_${selectedFormData.length}份_${new Date().toISOString().split('T')[0]}.${extension}`;
-        }
-
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      if (selectedFormData.length === 0) {
+        alert('没有找到选中的表单数据');
+        return;
       }
+
+      // 显示加载提示
+      const loadingMessage = selectedFormData.length === 1 ?
+        '正在生成PDF文件...' :
+        `正在生成${selectedFormData.length}个PDF文件并打包...`;
+
+      // 这里应该显示一个更好的加载提示，暂时使用alert
+      console.log(loadingMessage);
+
+      // 使用前端PDF生成和压缩功能
+      await exportFormsAsZip(selectedFormData);
+
     } catch (error) {
       console.error('批量导出失败:', error);
       alert('批量导出失败，请重试');

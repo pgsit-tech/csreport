@@ -358,78 +358,12 @@ app.post('/api/admin/export', async (c) => {
       return c.json({ success: false, message: '没有数据可导出' }, 400);
     }
 
-    // 如果只有一个表单，直接返回PDF
-    if (forms.length === 1) {
-      const form = forms[0];
-      const htmlContent = generateFormPDF(form);
-
-      // 使用 Puppeteer API 生成 PDF
-      const pdfResponse = await fetch('https://api.htmlcsstoimage.com/v1/image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic ' + btoa('your-api-key:')
-        },
-        body: JSON.stringify({
-          html: htmlContent,
-          format: 'pdf',
-          width: 800,
-          height: 1200
-        })
-      });
-
-      if (pdfResponse.ok) {
-        const pdfBuffer = await pdfResponse.arrayBuffer();
-        const fileName = `${form.companyName}_${form.salesperson || '未知业务员'}_${form.reportDate.replace(/[^0-9-]/g, '')}.pdf`;
-
-        return new Response(pdfBuffer, {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`
-          }
-        });
-      }
-    }
-
-    // 多个表单时，创建ZIP压缩包
-    // 由于Cloudflare Worker的限制，我们暂时返回一个包含所有表单信息的合并PDF
-    const combinedHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>批量客户报告</title>
-  <style>
-    body { font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 20px; line-height: 1.6; }
-    .report { page-break-after: always; margin-bottom: 50px; }
-    .report:last-child { page-break-after: auto; }
-    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-    .section { margin-bottom: 20px; }
-    .section h2 { font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
-    table { width: 100%; border-collapse: collapse; }
-    td { padding: 8px; border-bottom: 1px solid #eee; }
-    .label { width: 30%; font-weight: bold; }
-    .value { width: 70%; }
-  </style>
-</head>
-<body>
-  ${forms.map(form => `
-    <div class="report">
-      ${generateFormPDF(form).replace(/<!DOCTYPE html>[\s\S]*?<body>/, '').replace(/<\/body>[\s\S]*?<\/html>/, '')}
-    </div>
-  `).join('')}
-</body>
-</html>
-    `;
-
-    // 返回合并的PDF（简化版本，实际生产环境建议使用专门的PDF生成服务）
-    const fileName = `批量客户报告_${new Date().toISOString().split('T')[0]}.html`;
-
-    return new Response(combinedHtml, {
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`
-      }
+    // 由于Cloudflare Worker的限制，我们无法直接生成真正的PDF和ZIP文件
+    // 这里返回一个包含所有表单数据的JSON，前端将处理PDF生成和压缩
+    return c.json({
+      success: true,
+      data: forms,
+      message: '数据获取成功，前端将处理PDF生成'
     });
 
   } catch (error) {
