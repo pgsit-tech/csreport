@@ -527,8 +527,18 @@ app.post('/api/nextcloud/upload', async (c) => {
 
     // 构建WebDAV URL
     const baseUrl = config.serverUrl.replace(/\/$/, '');
-    const targetPath = config.targetPath.startsWith('/') ? config.targetPath : `/${config.targetPath}`;
-    const webdavUrl = `${baseUrl}/remote.php/dav/files/${config.username}${targetPath}/${fileName}`;
+    let webdavUrl;
+
+    // 检查服务器地址是否已经包含完整的WebDAV路径
+    if (baseUrl.includes('/remote.php/dav/files/')) {
+      // 如果已经包含完整路径，直接使用
+      const targetPath = config.targetPath.startsWith('/') ? config.targetPath : `/${config.targetPath}`;
+      webdavUrl = `${baseUrl}${targetPath}/${fileName}`;
+    } else {
+      // 如果是基础URL，构建完整的WebDAV路径
+      const targetPath = config.targetPath.startsWith('/') ? config.targetPath : `/${config.targetPath}`;
+      webdavUrl = `${baseUrl}/remote.php/dav/files/${config.username}${targetPath}/${fileName}`;
+    }
 
     console.log(`📤 构建WebDAV URL: ${webdavUrl}`);
 
@@ -698,7 +708,16 @@ app.get('/api/test-nextcloud', async (c) => {
 
     const auth = btoa(`${username}:${password}`);
     const baseUrl = serverUrl.replace(/\/$/, '');
-    const testUrl = `${baseUrl}/remote.php/dav/files/${username}/`;
+    let testUrl;
+
+    // 检查服务器地址是否已经包含完整的WebDAV路径
+    if (baseUrl.includes('/remote.php/dav/files/')) {
+      // 如果已经包含完整路径，直接使用作为测试URL
+      testUrl = baseUrl + '/';
+    } else {
+      // 如果是基础URL，构建完整的WebDAV路径
+      testUrl = `${baseUrl}/remote.php/dav/files/${username}/`;
+    }
 
     console.log(`🔍 测试Nextcloud连接: ${testUrl}`);
 
@@ -713,6 +732,18 @@ app.get('/api/test-nextcloud', async (c) => {
 
     const responseText = await response.text().catch(() => '无法获取响应内容');
 
+    // 分析配置并提供建议
+    const isFullWebDAVUrl = baseUrl.includes('/remote.php/dav/files/');
+    const configAnalysis = {
+      detectedType: isFullWebDAVUrl ? 'Full WebDAV URL' : 'Base Server URL',
+      recommendation: isFullWebDAVUrl
+        ? '✅ 配置正确：使用完整的WebDAV URL'
+        : '⚠️ 建议：如果连接失败，请尝试使用完整的WebDAV URL',
+      suggestedFullUrl: isFullWebDAVUrl
+        ? serverUrl
+        : `${baseUrl}/remote.php/dav/files/${username}`
+    };
+
     return c.json({
       success: response.ok,
       status: response.status,
@@ -724,6 +755,7 @@ app.get('/api/test-nextcloud', async (c) => {
         targetPath: targetPath,
         testUrl: testUrl
       },
+      analysis: configAnalysis,
       response: response.ok ? '连接正常' : responseText.substring(0, 500)
     });
   } catch (error) {
