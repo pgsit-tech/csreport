@@ -372,6 +372,146 @@ app.post('/api/admin/export', async (c) => {
   }
 });
 
+// 管理接口 - 数据清理（危险操作，需要特殊验证）
+app.post('/api/admin/cleanup', async (c) => {
+  try {
+    const { confirmCode, action } = await c.req.json();
+
+    // 安全验证：需要特殊的确认码
+    const expectedCode = 'CLEANUP_CONFIRM_2025';
+    if (confirmCode !== expectedCode) {
+      return c.json({
+        success: false,
+        message: '确认码错误，操作被拒绝'
+      }, 403);
+    }
+
+    let result = { deletedCount: 0, message: '' };
+
+    switch (action) {
+      case 'clear_all':
+        // 清空所有表单数据
+        const deleteFormsResult = await c.env.DB.prepare(
+          'DELETE FROM form_submissions'
+        ).run();
+
+        result = {
+          deletedCount: deleteFormsResult.changes || 0,
+          message: `已清理 ${deleteFormsResult.changes || 0} 条表单记录`
+        };
+        break;
+
+      case 'clear_old':
+        // 清理30天前的数据
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const cutoffDate = thirtyDaysAgo.toISOString();
+
+        const deleteOldFormsResult = await c.env.DB.prepare(
+          'DELETE FROM form_submissions WHERE created_at < ?'
+        ).bind(cutoffDate).run();
+
+        result = {
+          deletedCount: deleteOldFormsResult.changes || 0,
+          message: `已清理 ${deleteOldFormsResult.changes || 0} 条30天前的表单记录`
+        };
+        break;
+
+      case 'clear_test':
+        // 清理测试数据（包含"测试"关键词的数据）
+        const deleteTestFormsResult = await c.env.DB.prepare(
+          `DELETE FROM form_submissions
+           WHERE company_name LIKE '%测试%'
+           OR company_name LIKE '%test%'
+           OR company_name LIKE '%Test%'
+           OR contact_person LIKE '%测试%'
+           OR contact_person LIKE '%test%'`
+        ).run();
+
+        result = {
+          deletedCount: deleteTestFormsResult.changes || 0,
+          message: `已清理 ${deleteTestFormsResult.changes || 0} 条测试数据`
+        };
+        break;
+
+      default:
+        return c.json({
+          success: false,
+          message: '无效的清理操作类型'
+        }, 400);
+    }
+
+    // 记录清理操作日志
+    console.log(`数据清理操作完成: ${action}, 删除记录数: ${result.deletedCount}`);
+
+    return c.json({
+      success: true,
+      data: result,
+      message: '数据清理完成'
+    });
+
+  } catch (error) {
+    console.error('数据清理时出错:', error);
+    return c.json({ success: false, message: '数据清理失败，请重试' }, 500);
+  }
+});
+
+// 管理接口 - 获取数据库统计信息
+app.get('/api/admin/stats', async (c) => {
+  try {
+    // 获取表单总数
+    const totalFormsResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM form_submissions'
+    ).first();
+
+    // 获取今日表单数
+    const today = new Date().toISOString().split('T')[0];
+    const todayFormsResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM form_submissions WHERE DATE(created_at) = ?'
+    ).bind(today).first();
+
+    // 获取本周表单数
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekFormsResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM form_submissions WHERE created_at >= ?'
+    ).bind(weekAgo.toISOString()).first();
+
+    // 获取本月表单数
+    const monthAgo = new Date();
+    monthAgo.setDate(monthAgo.getDate() - 30);
+    const monthFormsResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM form_submissions WHERE created_at >= ?'
+    ).bind(monthAgo.toISOString()).first();
+
+    // 获取最早和最新的记录时间
+    const oldestResult = await c.env.DB.prepare(
+      'SELECT MIN(created_at) as oldest FROM form_submissions'
+    ).first();
+
+    const newestResult = await c.env.DB.prepare(
+      'SELECT MAX(created_at) as newest FROM form_submissions'
+    ).first();
+
+    return c.json({
+      success: true,
+      data: {
+        totalForms: totalFormsResult?.count || 0,
+        todayForms: todayFormsResult?.count || 0,
+        weekForms: weekFormsResult?.count || 0,
+        monthForms: monthFormsResult?.count || 0,
+        oldestRecord: oldestResult?.oldest,
+        newestRecord: newestResult?.newest
+      },
+      message: '统计信息获取成功'
+    });
+
+  } catch (error) {
+    console.error('获取统计信息时出错:', error);
+    return c.json({ success: false, message: '获取统计信息失败' }, 500);
+  }
+});
+
 // 生成邮件HTML内容
 function generateEmailHTML(formData: any): string {
   return `

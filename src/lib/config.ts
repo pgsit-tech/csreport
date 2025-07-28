@@ -13,6 +13,8 @@ export const API_CONFIG = {
     sendEmail: '/api/send-email',
     adminForms: '/api/admin/forms',
     adminExport: '/api/admin/export',
+    adminStats: '/api/admin/stats',
+    adminCleanup: '/api/admin/cleanup',
     health: '/health'
   }
 };
