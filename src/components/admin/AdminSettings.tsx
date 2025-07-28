@@ -5,12 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, User, Lock, Save } from 'lucide-react';
+import { Settings, User, Lock, Save, Cloud } from 'lucide-react';
 
 interface AdminInfo {
   username: string;
   email: string;
   systemName: string;
+}
+
+interface NextcloudConfig {
+  serverUrl: string;
+  username: string;
+  password: string;
+  targetPath: string;
+  enabled: boolean;
 }
 
 interface AdminSettingsProps {
@@ -23,13 +31,21 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
     email: localStorage.getItem('admin_email') || 'admin@example.com',
     systemName: localStorage.getItem('system_name') || '业务员见客报告系统'
   });
-  
+
+  const [nextcloudConfig, setNextcloudConfig] = useState<NextcloudConfig>({
+    serverUrl: localStorage.getItem('nextcloud_server_url') || '',
+    username: localStorage.getItem('nextcloud_username') || '',
+    password: localStorage.getItem('nextcloud_password') || '',
+    targetPath: localStorage.getItem('nextcloud_target_path') || '/图书馆/业务报告',
+    enabled: localStorage.getItem('nextcloud_enabled') === 'true'
+  });
+
   const [passwords, setPasswords] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -58,6 +74,27 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
       }, 1000);
     } catch {
       setMessage('更新失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNextcloudUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+
+    try {
+      // 保存到本地存储
+      localStorage.setItem('nextcloud_server_url', nextcloudConfig.serverUrl);
+      localStorage.setItem('nextcloud_username', nextcloudConfig.username);
+      localStorage.setItem('nextcloud_password', nextcloudConfig.password);
+      localStorage.setItem('nextcloud_target_path', nextcloudConfig.targetPath);
+      localStorage.setItem('nextcloud_enabled', nextcloudConfig.enabled.toString());
+
+      setMessage('Nextcloud配置已更新');
+    } catch {
+      setMessage('配置更新失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -223,6 +260,84 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
                 <Button type="submit" disabled={loading}>
                   <Lock className="h-4 w-4 mr-2" />
                   修改密码
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Nextcloud配置 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Cloud className="h-5 w-5" />
+                Nextcloud图书馆配置
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleNextcloudUpdate} className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <input
+                    type="checkbox"
+                    id="nextcloudEnabled"
+                    checked={nextcloudConfig.enabled}
+                    onChange={(e) => setNextcloudConfig({...nextcloudConfig, enabled: e.target.checked})}
+                    className="rounded"
+                  />
+                  <Label htmlFor="nextcloudEnabled">启用Nextcloud推送功能</Label>
+                </div>
+
+                <div>
+                  <Label htmlFor="serverUrl">服务器地址</Label>
+                  <Input
+                    id="serverUrl"
+                    value={nextcloudConfig.serverUrl}
+                    onChange={(e) => setNextcloudConfig({...nextcloudConfig, serverUrl: e.target.value})}
+                    placeholder="https://your-nextcloud.com"
+                    disabled={!nextcloudConfig.enabled}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="nextcloudUsername">用户名</Label>
+                    <Input
+                      id="nextcloudUsername"
+                      value={nextcloudConfig.username}
+                      onChange={(e) => setNextcloudConfig({...nextcloudConfig, username: e.target.value})}
+                      placeholder="nextcloud用户名"
+                      disabled={!nextcloudConfig.enabled}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="nextcloudPassword">密码</Label>
+                    <Input
+                      id="nextcloudPassword"
+                      type="password"
+                      value={nextcloudConfig.password}
+                      onChange={(e) => setNextcloudConfig({...nextcloudConfig, password: e.target.value})}
+                      placeholder="nextcloud密码"
+                      disabled={!nextcloudConfig.enabled}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="targetPath">目标路径</Label>
+                  <Input
+                    id="targetPath"
+                    value={nextcloudConfig.targetPath}
+                    onChange={(e) => setNextcloudConfig({...nextcloudConfig, targetPath: e.target.value})}
+                    placeholder="/图书馆/业务报告"
+                    disabled={!nextcloudConfig.enabled}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    文件将上传到此路径下，路径必须以 / 开头
+                  </p>
+                </div>
+
+                <Button type="submit" disabled={loading || !nextcloudConfig.enabled}>
+                  <Save className="h-4 w-4 mr-2" />
+                  保存配置
                 </Button>
               </form>
             </CardContent>

@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Cloud, Upload, Settings, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Cloud, Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { FormData } from '@/types/form';
 import { generatePDF } from '@/lib/pdf-generator';
 import { fetchWithFallback } from '@/lib/config';
@@ -24,31 +23,46 @@ interface NextcloudConfig {
 }
 
 export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
-  const [config, setConfig] = useState<NextcloudConfig>({
-    serverUrl: 'https://your-nextcloud.com',
-    username: '',
-    password: '',
-    targetPath: '/图书馆/业务报告'
-  });
-  
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
-  const [showConfig, setShowConfig] = useState(false);
+  const [config, setConfig] = useState<NextcloudConfig | null>(null);
 
-  // 处理配置更新
-  const handleConfigChange = (field: keyof NextcloudConfig, value: string) => {
-    setConfig(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  // 从localStorage获取配置
+  const loadConfig = () => {
+    const enabled = localStorage.getItem('nextcloud_enabled') === 'true';
+    if (!enabled) {
+      setMessage('Nextcloud功能未启用，请联系管理员配置');
+      setUploadStatus('error');
+      return null;
+    }
+
+    const config: NextcloudConfig = {
+      serverUrl: localStorage.getItem('nextcloud_server_url') || '',
+      username: localStorage.getItem('nextcloud_username') || '',
+      password: localStorage.getItem('nextcloud_password') || '',
+      targetPath: localStorage.getItem('nextcloud_target_path') || '/图书馆/业务报告'
+    };
+
+    if (!config.serverUrl || !config.username || !config.password) {
+      setMessage('Nextcloud配置不完整，请联系管理员配置');
+      setUploadStatus('error');
+      return null;
+    }
+
+    return config;
   };
+
+  // 组件初始化时加载配置
+  useEffect(() => {
+    const initialConfig = loadConfig();
+    setConfig(initialConfig);
+  }, []);
 
   // 推送到Nextcloud
   const handlePushToNextcloud = async () => {
-    if (!config.serverUrl || !config.username || !config.password) {
-      setMessage('请填写完整的Nextcloud配置信息');
-      setUploadStatus('error');
+    const currentConfig = config || loadConfig();
+    if (!currentConfig) {
       return;
     }
 
@@ -74,7 +88,7 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
           const response = await fetchWithFallback('nextcloudUpload', {
             method: 'POST',
             body: JSON.stringify({
-              config,
+              config: currentConfig,
               fileName,
               fileContent: base64Content,
               formData
@@ -85,7 +99,7 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
           
           if (result.success) {
             setUploadStatus('success');
-            setMessage(`文件已成功上传到: ${config.targetPath}/${fileName}`);
+            setMessage(`文件已成功上传到: ${currentConfig.targetPath}/${fileName}`);
           } else {
             setUploadStatus('error');
             setMessage(result.message || '上传失败，请检查配置信息');
@@ -148,82 +162,21 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
           </CardContent>
         </Card>
 
-        {/* Nextcloud配置 */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center justify-between">
-              Nextcloud配置
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowConfig(!showConfig)}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                {showConfig ? '隐藏配置' : '显示配置'}
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {showConfig ? (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="serverUrl">服务器地址</Label>
-                  <Input
-                    id="serverUrl"
-                    value={config.serverUrl}
-                    onChange={(e) => handleConfigChange('serverUrl', e.target.value)}
-                    placeholder="https://your-nextcloud.com"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="username">用户名</Label>
-                    <Input
-                      id="username"
-                      value={config.username}
-                      onChange={(e) => handleConfigChange('username', e.target.value)}
-                      placeholder="nextcloud用户名"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="password">密码</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={config.password}
-                      onChange={(e) => handleConfigChange('password', e.target.value)}
-                      placeholder="nextcloud密码"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="targetPath">目标路径</Label>
-                  <Input
-                    id="targetPath"
-                    value={config.targetPath}
-                    onChange={(e) => handleConfigChange('targetPath', e.target.value)}
-                    placeholder="/图书馆/业务报告"
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    文件将上传到此路径下，路径必须以 / 开头
-                  </p>
-                </div>
+        {/* 推送状态 */}
+        {config && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">推送目标</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-gray-600 space-y-1">
+                <p><span className="font-medium">服务器:</span> {config.serverUrl}</p>
+                <p><span className="font-medium">目标路径:</span> {config.targetPath}</p>
+                <p><span className="font-medium">文件名:</span> {formData.companyName}_{formData.salesperson || '未指定'}_{formData.reportDate}.pdf</p>
               </div>
-            ) : (
-              <div className="text-sm text-gray-600">
-                <p>服务器: {config.serverUrl}</p>
-                <p>用户: {config.username || '未设置'}</p>
-                <p>路径: {config.targetPath}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 状态消息 */}
         {message && (
@@ -253,7 +206,7 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
         <div className="flex gap-3">
           <Button
             onClick={handlePushToNextcloud}
-            disabled={isUploading || !config.username || !config.password}
+            disabled={isUploading || !config}
             className="flex-1"
           >
             {isUploading ? (
@@ -278,10 +231,10 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-medium mb-2">使用说明:</h4>
           <ul className="text-sm text-gray-600 space-y-1">
-            <li>• 配置您的Nextcloud服务器信息</li>
-            <li>• 设置目标上传路径（如：/图书馆/业务报告）</li>
+            <li>• Nextcloud配置由管理员统一管理</li>
             <li>• 点击&ldquo;推送到图书馆&rdquo;将PDF报告上传到指定目录</li>
             <li>• 文件名格式：公司名称_业务员_日期.pdf</li>
+            <li>• 如需修改配置，请联系系统管理员</li>
           </ul>
         </div>
       </div>
