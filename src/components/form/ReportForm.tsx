@@ -139,6 +139,27 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
               <h3 className="text-lg font-semibold border-b pb-2">基本信息</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <Label htmlFor="salesperson">销售人员 *</Label>
+                  <Input
+                    id="salesperson"
+                    {...register('salesperson')}
+                    placeholder="请输入负责的销售人员姓名"
+                  />
+                  {errors.salesperson && (
+                    <p className="text-red-500 text-sm mt-1">{errors.salesperson.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="reportDate">报告日期</Label>
+                  <Input
+                    id="reportDate"
+                    type="date"
+                    {...register('reportDate')}
+                  />
+                </div>
+
+                <div>
                   <Label htmlFor="companyName">公司名称 *</Label>
                   <Input
                     id="companyName"
@@ -148,15 +169,6 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
                   {errors.companyName && (
                     <p className="text-red-500 text-sm mt-1">{errors.companyName.message}</p>
                   )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="reportDate">报告日期</Label>
-                  <Input
-                    id="reportDate"
-                    type="date"
-                    {...register('reportDate')}
-                  />
                 </div>
                 
                 <div className="md:col-span-2">
@@ -301,18 +313,6 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
                   )}
                 </div>
                 
-                <div>
-                  <Label htmlFor="salesperson">销售人员 *</Label>
-                  <Input
-                    id="salesperson"
-                    {...register('salesperson')}
-                    placeholder="请输入负责的销售人员姓名"
-                  />
-                  {errors.salesperson && (
-                    <p className="text-red-500 text-sm mt-1">{errors.salesperson.message}</p>
-                  )}
-                </div>
-
                 <div>
                   <Label htmlFor="chatRecords">聊天记录</Label>
                   <Textarea
