@@ -1,141 +1,172 @@
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { FormData } from '@/types/form';
+import { generatePDFFileName } from './utils';
 
-// 生成单个表单的PDF
+// 使用与页面生成相同的方法生成单个表单的PDF
 async function generateSingleFormPDF(formData: FormData): Promise<{ pdfBlob: Blob, fileName: string }> {
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  
-  // 设置中文字体（简化版本，实际项目中需要加载中文字体）
-  pdf.setFont('helvetica');
-  
-  let yPosition = 20;
-  const lineHeight = 8;
-  const leftMargin = 20;
-  const rightMargin = 190;
-  
-  // 标题
-  pdf.setFontSize(18);
-  pdf.text('Business Visit Report', leftMargin, yPosition);
-  yPosition += lineHeight * 2;
-  
-  // 查询码
-  pdf.setFontSize(12);
-  pdf.text(`Query Code: ${formData.queryCode || 'N/A'}`, leftMargin, yPosition);
-  yPosition += lineHeight * 2;
-  
-  // 基本信息
-  pdf.setFontSize(14);
-  pdf.text('Basic Information', leftMargin, yPosition);
-  yPosition += lineHeight;
-  
-  pdf.setFontSize(10);
-  const basicInfo = [
-    `Company: ${formData.companyName}`,
-    `Address: ${formData.address}`,
-    `Phone: ${formData.phone || 'N/A'}`,
-    `Website: ${formData.website || 'N/A'}`,
-    `Company Size: ${formData.companySize}`,
-    `Office Size: ${formData.officeSize}`
-  ];
-  
-  basicInfo.forEach(info => {
-    pdf.text(info, leftMargin, yPosition);
-    yPosition += lineHeight;
-  });
-  
-  yPosition += lineHeight;
-  
-  // 联系人信息
-  pdf.setFontSize(14);
-  pdf.text('Contact Information', leftMargin, yPosition);
-  yPosition += lineHeight;
-  
-  pdf.setFontSize(10);
-  const contactInfo = [
-    `Contact Person: ${formData.contactPerson}`,
-    `Mobile: ${formData.mobile}`,
-    `WeChat: ${formData.wechat || 'N/A'}`
-  ];
-  
-  contactInfo.forEach(info => {
-    pdf.text(info, leftMargin, yPosition);
-    yPosition += lineHeight;
-  });
-  
-  yPosition += lineHeight;
-  
-  // 业务信息
-  pdf.setFontSize(14);
-  pdf.text('Business Information', leftMargin, yPosition);
-  yPosition += lineHeight;
-  
-  pdf.setFontSize(10);
-  const businessInfo = [
-    `Main Business: ${formData.mainBusiness}`,
-    `Products: ${formData.products}`,
-    `Service Needs: ${formData.serviceNeeds}`,
-    `Salesperson: ${formData.salesperson || 'Not Specified'}`
-  ];
-  
-  businessInfo.forEach(info => {
-    // 处理长文本换行
-    const lines = pdf.splitTextToSize(info, rightMargin - leftMargin);
-    lines.forEach((line: string) => {
-      if (yPosition > 280) { // 接近页面底部时添加新页
-        pdf.addPage();
-        yPosition = 20;
-      }
-      pdf.text(line, leftMargin, yPosition);
-      yPosition += lineHeight;
+  // 创建一个临时的HTML元素来渲染表单数据
+  const element = document.createElement('div');
+  element.className = 'pdf-container';
+  element.style.width = '210mm';
+  element.style.padding = '10mm';
+  element.style.backgroundColor = 'white';
+  element.style.fontFamily = 'Arial, sans-serif';
+  element.style.position = 'absolute';
+  element.style.left = '-9999px';
+  element.style.top = '-9999px';
+
+  // 添加表单内容（与原有的generatePDF函数相同的HTML结构）
+  element.innerHTML = `
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h1 style="font-size: 24px; margin-bottom: 5px;">业务员见客报告</h1>
+      <p style="font-size: 14px; color: #666;">报告日期: ${formData.reportDate}</p>
+      ${formData.queryCode ? `<p style="font-size: 12px; color: #888;">查询码: ${formData.queryCode}</p>` : ''}
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <h2 style="font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">公司信息</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">公司名称:</td>
+          <td style="padding: 8px;">${formData.companyName}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">地址:</td>
+          <td style="padding: 8px;">${formData.address}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">电话:</td>
+          <td style="padding: 8px;">${formData.phone || '-'}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">网站:</td>
+          <td style="padding: 8px;">${formData.website || '-'}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">公司人数:</td>
+          <td style="padding: 8px;">${formData.companySize}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">办公室大小:</td>
+          <td style="padding: 8px;">${formData.officeSize}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <h2 style="font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">联系人信息</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">联系人:</td>
+          <td style="padding: 8px;">${formData.contactPerson}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">手机:</td>
+          <td style="padding: 8px;">${formData.mobile}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">微信:</td>
+          <td style="padding: 8px;">${formData.wechat || '-'}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <h2 style="font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">业务信息</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">主要业务:</td>
+          <td style="padding: 8px;">${formData.mainBusiness}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">产品:</td>
+          <td style="padding: 8px;">${formData.products}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">服务需求:</td>
+          <td style="padding: 8px;">${formData.serviceNeeds}</td>
+        </tr>
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">负责业务员:</td>
+          <td style="padding: 8px;">${formData.salesperson || '未指定'}</td>
+        </tr>
+      </table>
+    </div>
+
+    ${formData.chatRecords ? `
+    <div style="margin-bottom: 20px;">
+      <h2 style="font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">聊天记录</h2>
+      <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; white-space: pre-wrap;">
+        ${formData.chatRecords}
+      </div>
+    </div>
+    ` : ''}
+
+    <div style="margin-bottom: 20px;">
+      <h2 style="font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px;">报告信息</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">创建时间:</td>
+          <td style="padding: 8px;">${new Date(formData.createdAt).toLocaleString('zh-CN')}</td>
+        </tr>
+        ${formData.customQueryCode ? `
+        <tr>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">自定义查询码:</td>
+          <td style="padding: 8px;">${formData.customQueryCode}</td>
+        </tr>
+        ` : ''}
+      </table>
+    </div>
+  `;
+
+  try {
+    // 将元素添加到DOM中
+    document.body.appendChild(element);
+
+    // 使用html2canvas生成canvas
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff'
     });
-  });
-  
-  // 聊天记录
-  if (formData.chatRecords) {
-    yPosition += lineHeight;
-    pdf.setFontSize(14);
-    pdf.text('Chat Records', leftMargin, yPosition);
-    yPosition += lineHeight;
-    
-    pdf.setFontSize(10);
-    const chatLines = pdf.splitTextToSize(formData.chatRecords, rightMargin - leftMargin);
-    chatLines.forEach((line: string) => {
-      if (yPosition > 280) {
-        pdf.addPage();
-        yPosition = 20;
-      }
-      pdf.text(line, leftMargin, yPosition);
-      yPosition += lineHeight;
-    });
+
+    // 创建PDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const imgData = canvas.toDataURL('image/png');
+
+    const imgWidth = 210;
+    const pageHeight = 295;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    // 生成PDF文件名：客户名称+业务员+日期
+    const fileName = generatePDFFileName(formData.companyName, formData.salesperson, formData.reportDate);
+
+    // 生成PDF Blob
+    const pdfBlob = pdf.output('blob');
+
+    return { pdfBlob, fileName };
+  } finally {
+    // 清理临时元素
+    if (element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
   }
-  
-  // 报告信息
-  yPosition += lineHeight;
-  pdf.setFontSize(14);
-  pdf.text('Report Information', leftMargin, yPosition);
-  yPosition += lineHeight;
-  
-  pdf.setFontSize(10);
-  const reportInfo = [
-    `Report Date: ${formData.reportDate}`,
-    `Created: ${new Date(formData.createdAt).toLocaleDateString()}`
-  ];
-  
-  reportInfo.forEach(info => {
-    pdf.text(info, leftMargin, yPosition);
-    yPosition += lineHeight;
-  });
-  
-  // 生成文件名
-  const cleanCompanyName = formData.companyName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
-  const cleanSalesperson = (formData.salesperson || 'Unknown').replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
-  const cleanDate = formData.reportDate.replace(/[^0-9-]/g, '');
-  const fileName = `${cleanCompanyName}_${cleanSalesperson}_${cleanDate}.pdf`;
-  
-  const pdfBlob = pdf.output('blob');
-  return { pdfBlob, fileName };
 }
 
 // 导出单个表单为PDF
