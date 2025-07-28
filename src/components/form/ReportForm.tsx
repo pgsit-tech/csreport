@@ -12,8 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Download, Mail } from 'lucide-react';
-import { EmailDialog } from './EmailDialog';
+import { Loader2, Download, Cloud } from 'lucide-react';
+import { NextcloudDialog } from './NextcloudDialog';
 
 interface ReportFormProps {
   initialData?: FormData;
@@ -24,7 +24,7 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ success: boolean; queryCode?: string; message?: string } | null>(null);
-  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [showNextcloudDialog, setShowNextcloudDialog] = useState(false);
   const [currentFormData, setCurrentFormData] = useState<FormData | null>(null);
 
   const {
@@ -112,18 +112,18 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
     }
   };
 
-  const handleSendEmail = () => {
+  const handlePushToLibrary = () => {
     const formData = getValues();
-    const emailData: FormData = {
+    const libraryData: FormData = {
       ...formData,
       queryCode: submitResult?.queryCode || currentFormData?.queryCode || '',
       reportDate: formData.reportDate || formatDate(new Date()),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     } as FormData;
-    
-    setCurrentFormData(emailData);
-    setShowEmailDialog(true);
+
+    setCurrentFormData(libraryData);
+    setShowNextcloudDialog(true);
   };
 
   return (
@@ -395,23 +395,22 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleSendEmail}
+                onClick={handlePushToLibrary}
                 className="flex-1 min-w-[120px]"
               >
-                <Mail className="mr-2 h-4 w-4" />
-                发送邮件
+                <Cloud className="mr-2 h-4 w-4" />
+                推送至图书馆
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
 
-      {/* 邮件发送对话框 */}
-      {showEmailDialog && currentFormData && (
-        <EmailDialog
+      {/* Nextcloud推送对话框 */}
+      {showNextcloudDialog && currentFormData && (
+        <NextcloudDialog
           formData={currentFormData}
-          open={showEmailDialog}
-          onClose={() => setShowEmailDialog(false)}
+          onClose={() => setShowNextcloudDialog(false)}
         />
       )}
     </div>

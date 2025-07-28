@@ -512,6 +512,97 @@ app.get('/api/admin/stats', async (c) => {
   }
 });
 
+// Nextcloud上传接口
+app.post('/api/nextcloud/upload', async (c) => {
+  try {
+    const { config, fileName, fileContent, formData } = await c.req.json();
+
+    // 验证必要参数
+    if (!config.serverUrl || !config.username || !config.password || !fileName || !fileContent) {
+      return c.json({
+        success: false,
+        message: '缺少必要的上传参数'
+      }, 400);
+    }
+
+    // 构建WebDAV URL
+    const webdavUrl = `${config.serverUrl.replace(/\/$/, '')}/remote.php/dav/files/${config.username}${config.targetPath}/${fileName}`;
+
+    // 创建Basic Auth头
+    const auth = btoa(`${config.username}:${config.password}`);
+
+    // 将Base64转换为ArrayBuffer
+    const binaryString = atob(fileContent);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    console.log(`📤 上传文件到Nextcloud: ${webdavUrl}`);
+
+    // 上传文件到Nextcloud
+    const uploadResponse = await fetch(webdavUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/pdf',
+        'Content-Length': bytes.length.toString()
+      },
+      body: bytes
+    });
+
+    if (uploadResponse.ok || uploadResponse.status === 201) {
+      console.log('✅ 文件上传成功');
+
+      // 记录上传日志（可选）
+      try {
+        await c.env.DB.prepare(`
+          INSERT INTO upload_logs (
+            form_id, file_name, upload_path, server_url,
+            uploaded_at, company_name, contact_person
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          formData.queryCode || 'unknown',
+          fileName,
+          `${config.targetPath}/${fileName}`,
+          config.serverUrl,
+          new Date().toISOString(),
+          formData.companyName,
+          formData.contactPerson
+        ).run();
+      } catch (logError) {
+        console.warn('⚠️ 上传日志记录失败:', logError);
+        // 不影响主要功能，继续执行
+      }
+
+      return c.json({
+        success: true,
+        message: '文件已成功上传到图书馆',
+        data: {
+          fileName,
+          uploadPath: `${config.targetPath}/${fileName}`,
+          uploadTime: new Date().toISOString()
+        }
+      });
+    } else {
+      const errorText = await uploadResponse.text();
+      console.error('❌ Nextcloud上传失败:', uploadResponse.status, errorText);
+
+      return c.json({
+        success: false,
+        message: `上传失败: ${uploadResponse.status} ${uploadResponse.statusText}`
+      }, uploadResponse.status);
+    }
+
+  } catch (error) {
+    console.error('Nextcloud上传时出错:', error);
+    return c.json({
+      success: false,
+      message: '上传过程中发生错误，请检查网络连接和配置信息'
+    }, 500);
+  }
+});
+
 // 生成邮件HTML内容
 function generateEmailHTML(formData: any): string {
   return `

@@ -11,6 +11,7 @@ export const API_CONFIG = {
     submit: '/api/submit',
     query: '/api/query',
     sendEmail: '/api/send-email',
+    nextcloudUpload: '/api/nextcloud/upload',
     adminForms: '/api/admin/forms',
     adminExport: '/api/admin/export',
     adminStats: '/api/admin/stats',
