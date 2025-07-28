@@ -23,11 +23,29 @@ interface DataCleanupProps {
 }
 
 export default function DataCleanup({ onClose }: DataCleanupProps) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmCode, setConfirmCode] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | 'warning'>('success');
+
+  // 密码验证
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const correctPassword = 'Sz@pgsit123';
+
+    if (password === correctPassword) {
+      setIsAuthenticated(true);
+      setAuthError('');
+      setPassword(''); // 清空密码输入
+    } else {
+      setAuthError('密码错误，请重新输入');
+      setPassword('');
+    }
+  };
 
   // 获取数据库统计信息
   const fetchStats = async () => {
@@ -45,8 +63,10 @@ export default function DataCleanup({ onClose }: DataCleanupProps) {
   };
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (isAuthenticated) {
+      fetchStats();
+    }
+  }, [isAuthenticated]);
 
   // 执行数据清理
   const handleCleanup = async (action: string, actionName: string) => {
@@ -92,6 +112,60 @@ export default function DataCleanup({ onClose }: DataCleanupProps) {
       setLoading(false);
     }
   };
+
+  // 如果未认证，显示密码输入界面
+  if (!isAuthenticated) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2 text-red-600">
+              <Database className="h-6 w-6" />
+              数据清理验证
+            </h2>
+            <Button variant="outline" onClick={onClose}>
+              关闭
+            </Button>
+          </div>
+
+          {/* 安全警告 */}
+          <Alert className="mb-6 border-red-200 bg-red-50">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              <strong>高级管理功能：</strong>此功能仅限授权管理员使用，请输入管理密码。
+            </AlertDescription>
+          </Alert>
+
+          {/* 密码输入表单 */}
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="adminPassword">管理密码</Label>
+              <Input
+                id="adminPassword"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="请输入数据清理管理密码"
+                className="mt-1"
+                autoFocus
+              />
+              {authError && (
+                <p className="text-red-500 text-sm mt-1">{authError}</p>
+              )}
+            </div>
+
+            <Button type="submit" className="w-full" disabled={!password}>
+              验证并进入
+            </Button>
+          </form>
+
+          <div className="mt-4 text-center text-sm text-gray-500">
+            <p>此功能包含危险操作，请谨慎使用</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
