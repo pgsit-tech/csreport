@@ -27,7 +27,7 @@ import {
 import { fetchWithFallback } from '@/lib/config';
 import LoginForm from '@/components/admin/LoginForm';
 import AdminSettings from '@/components/admin/AdminSettings';
-import { exportFormsAsZip, exportAllFormsAsZip } from '@/lib/batch-pdf-export';
+import { exportFormsAsZip, exportAllFormsAsZip, exportSingleFormAsPDF } from '@/lib/batch-pdf-export';
 
 interface AdminStats {
   totalForms: number;
@@ -55,6 +55,12 @@ export default function AdminPage() {
   useEffect(() => {
     const loginStatus = localStorage.getItem('admin_logged_in');
     setIsLoggedIn(loginStatus === 'true');
+  }, []);
+
+  // 设置页面标题
+  useEffect(() => {
+    const systemName = localStorage.getItem('system_name') || '业务员见客报告系统';
+    document.title = `${systemName} - 管理后台`;
   }, []);
 
   useEffect(() => {
@@ -163,16 +169,14 @@ export default function AdminPage() {
         return;
       }
 
-      // 显示加载提示
-      const loadingMessage = selectedFormData.length === 1 ?
-        '正在生成PDF文件...' :
-        `正在生成${selectedFormData.length}个PDF文件并打包...`;
-
-      // 这里应该显示一个更好的加载提示，暂时使用alert
-      console.log(loadingMessage);
-
-      // 使用前端PDF生成和压缩功能
-      await exportFormsAsZip(selectedFormData);
+      // 根据选择数量决定导出方式
+      if (selectedFormData.length === 1) {
+        console.log('正在生成单个PDF文件...');
+        await exportSingleFormAsPDF(selectedFormData[0]);
+      } else {
+        console.log(`正在生成${selectedFormData.length}个PDF文件并打包成ZIP...`);
+        await exportFormsAsZip(selectedFormData);
+      }
 
     } catch (error) {
       console.error('批量导出失败:', error);

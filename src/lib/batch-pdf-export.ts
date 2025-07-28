@@ -138,38 +138,53 @@ async function generateSingleFormPDF(formData: FormData): Promise<{ pdfBlob: Blo
   return { pdfBlob, fileName };
 }
 
-// 批量导出PDF并打包成ZIP
+// 导出单个表单为PDF
+export async function exportSingleFormAsPDF(form: FormData): Promise<void> {
+  const { pdfBlob, fileName } = await generateSingleFormPDF(form);
+  saveAs(pdfBlob, fileName);
+}
+
+// 批量导出PDF并打包成ZIP（始终创建ZIP，即使只有一个文件）
 export async function exportFormsAsZip(forms: FormData[]): Promise<void> {
   if (forms.length === 0) {
     throw new Error('No forms to export');
   }
-  
-  // 如果只有一个表单，直接下载PDF
-  if (forms.length === 1) {
-    const { pdfBlob, fileName } = await generateSingleFormPDF(forms[0]);
-    saveAs(pdfBlob, fileName);
-    return;
-  }
-  
-  // 多个表单时创建ZIP
+
+  // 创建ZIP文件
   const zip = new JSZip();
-  
+
+  console.log(`开始生成 ${forms.length} 个PDF文件...`);
+
   // 为每个表单生成PDF并添加到ZIP
   for (let i = 0; i < forms.length; i++) {
     const form = forms[i];
+    console.log(`正在处理第 ${i + 1}/${forms.length} 个表单: ${form.companyName}`);
+
     try {
       const { pdfBlob, fileName } = await generateSingleFormPDF(form);
       zip.file(fileName, pdfBlob);
+      console.log(`已添加到ZIP: ${fileName}`);
     } catch (error) {
       console.error(`Failed to generate PDF for form ${form.companyName}:`, error);
       // 继续处理其他表单
     }
   }
-  
+
+  console.log('正在生成ZIP文件...');
+
   // 生成ZIP文件
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const zipBlob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: {
+      level: 6
+    }
+  });
+
   const zipFileName = `客户报告批量导出_${forms.length}份_${new Date().toISOString().split('T')[0]}.zip`;
-  
+
+  console.log(`ZIP文件生成完成: ${zipFileName}`);
+
   // 下载ZIP文件
   saveAs(zipBlob, zipFileName);
 }

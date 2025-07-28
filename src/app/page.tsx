@@ -14,6 +14,12 @@ export default function Home() {
   const [queryResult, setQueryResult] = useState<FormData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // 设置页面标题
+  useEffect(() => {
+    const systemName = localStorage.getItem('system_name') || '业务员见客报告系统';
+    document.title = systemName;
+  }, []);
+
   // 检查 URL 参数，如果有查询码则自动查询
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
