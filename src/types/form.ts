@@ -71,5 +71,5 @@ export const formFields = {
   products: { label: '产品', required: true },
   serviceNeeds: { label: '服务需求', required: true },
   chatRecords: { label: '聊天记录', required: false },
-  salesperson: { label: '销售人员', required: true },
+  salesperson: { label: '业务员', required: true },
 } as const;

@@ -83,7 +83,7 @@ export async function generatePDF(formData: FormData): Promise<{ pdfBlob: Blob, 
           <td style="padding: 8px;">${formData.serviceNeeds}</td>
         </tr>
         <tr>
-          <td style="width: 30%; padding: 8px; font-weight: bold;">负责销售:</td>
+          <td style="width: 30%; padding: 8px; font-weight: bold;">负责业务员:</td>
           <td style="padding: 8px;">${formData.salesperson || '未指定'}</td>
         </tr>
       </table>

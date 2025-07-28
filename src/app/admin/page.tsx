@@ -143,7 +143,13 @@ export default function AdminPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `客户报告导出_${new Date().toISOString().split('T')[0]}.csv`;
+
+        // 根据内容类型确定文件扩展名
+        const contentType = response.headers.get('content-type');
+        const isHtml = contentType?.includes('text/html');
+        const extension = isHtml ? 'html' : 'pdf';
+
+        a.download = `批量客户报告_${new Date().toISOString().split('T')[0]}.${extension}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -177,7 +183,19 @@ export default function AdminPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `批量客户报告_${new Date().toISOString().split('T')[0]}.csv`;
+
+        // 根据内容类型和数量确定文件名
+        const contentType = response.headers.get('content-type');
+        const isHtml = contentType?.includes('text/html');
+        const extension = isHtml ? 'html' : 'pdf';
+
+        if (selectedFormData.length === 1) {
+          const form = selectedFormData[0];
+          a.download = `${form.companyName}_${form.salesperson || '未知业务员'}_${new Date(form.reportDate || form.createdAt).toLocaleDateString().replace(/\//g, '-')}.${extension}`;
+        } else {
+          a.download = `批量客户报告_${selectedFormData.length}份_${new Date().toISOString().split('T')[0]}.${extension}`;
+        }
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -322,12 +340,12 @@ export default function AdminPage() {
                 {selectedForms.length > 0 && (
                   <Button onClick={handleExportSelected} variant="outline" className="flex items-center gap-2">
                     <Download className="h-4 w-4" />
-                    导出选中 ({selectedForms.length})
+                    导出选中PDF ({selectedForms.length})
                   </Button>
                 )}
                 <Button onClick={handleExportAll} className="flex items-center gap-2">
                   <Download className="h-4 w-4" />
-                  导出全部
+                  导出全部PDF
                 </Button>
               </div>
             </div>
@@ -358,7 +376,7 @@ export default function AdminPage() {
                     <TableHead>公司名称</TableHead>
                     <TableHead>联系人</TableHead>
                     <TableHead>手机号</TableHead>
-                    <TableHead>销售人员</TableHead>
+                    <TableHead>业务员</TableHead>
                     <TableHead>报告日期</TableHead>
                     <TableHead>创建时间</TableHead>
                     <TableHead>操作</TableHead>

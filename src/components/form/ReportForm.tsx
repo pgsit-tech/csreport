@@ -139,11 +139,11 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
               <h3 className="text-lg font-semibold border-b pb-2">基本信息</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="salesperson">销售人员 *</Label>
+                  <Label htmlFor="salesperson">业务员 *</Label>
                   <Input
                     id="salesperson"
                     {...register('salesperson')}
-                    placeholder="请输入负责的销售人员姓名"
+                    placeholder="请输入负责的业务员姓名"
                   />
                   {errors.salesperson && (
                     <p className="text-red-500 text-sm mt-1">{errors.salesperson.message}</p>

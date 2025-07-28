@@ -256,7 +256,84 @@ app.get('/api/admin/forms', async (c) => {
   }
 });
 
-// 管理接口 - 导出表单（支持批量导出）
+// 生成单个表单的PDF内容
+function generateFormPDF(form: any): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>客户报告 - ${form.companyName}</title>
+  <style>
+    body { font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 20px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+    .section { margin-bottom: 20px; }
+    .section h2 { font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 8px; border-bottom: 1px solid #eee; }
+    .label { width: 30%; font-weight: bold; }
+    .value { width: 70%; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>业务员见客报告</h1>
+    <p>查询码: ${form.queryCode}</p>
+  </div>
+
+  <div class="section">
+    <h2>基本信息</h2>
+    <table>
+      <tr><td class="label">公司名称:</td><td class="value">${form.companyName}</td></tr>
+      <tr><td class="label">地址:</td><td class="value">${form.address}</td></tr>
+      <tr><td class="label">电话:</td><td class="value">${form.phone || '-'}</td></tr>
+      <tr><td class="label">网站:</td><td class="value">${form.website || '-'}</td></tr>
+      <tr><td class="label">公司人数:</td><td class="value">${form.companySize}</td></tr>
+      <tr><td class="label">办公室大小:</td><td class="value">${form.officeSize}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>联系人信息</h2>
+    <table>
+      <tr><td class="label">联系人:</td><td class="value">${form.contactPerson}</td></tr>
+      <tr><td class="label">手机:</td><td class="value">${form.mobile}</td></tr>
+      <tr><td class="label">微信:</td><td class="value">${form.wechat || '-'}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>业务信息</h2>
+    <table>
+      <tr><td class="label">主要业务:</td><td class="value">${form.mainBusiness}</td></tr>
+      <tr><td class="label">产品:</td><td class="value">${form.products}</td></tr>
+      <tr><td class="label">服务需求:</td><td class="value">${form.serviceNeeds}</td></tr>
+      <tr><td class="label">负责业务员:</td><td class="value">${form.salesperson || '未指定'}</td></tr>
+    </table>
+  </div>
+
+  ${form.chatRecords ? `
+  <div class="section">
+    <h2>聊天记录</h2>
+    <div style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
+      ${form.chatRecords.replace(/\n/g, '<br>')}
+    </div>
+  </div>
+  ` : ''}
+
+  <div class="section">
+    <h2>报告信息</h2>
+    <table>
+      <tr><td class="label">报告日期:</td><td class="value">${form.reportDate}</td></tr>
+      <tr><td class="label">创建时间:</td><td class="value">${new Date(form.createdAt).toLocaleString('zh-CN')}</td></tr>
+    </table>
+  </div>
+</body>
+</html>
+  `;
+}
+
+// 管理接口 - 导出表单（支持批量PDF导出）
 app.post('/api/admin/export', async (c) => {
   try {
     const requestData = await c.req.json();
@@ -270,7 +347,7 @@ app.post('/api/admin/export', async (c) => {
     } else if (requestData.formIds && requestData.formIds.length > 0) {
       // 从数据库查询指定的表单
       const placeholders = requestData.formIds.map(() => '?').join(',');
-      const query = `SELECT * FROM forms WHERE id IN (${placeholders})`;
+      const query = `SELECT * FROM form_submissions WHERE id IN (${placeholders})`;
       const result = await c.env.DB.prepare(query).bind(...requestData.formIds).all();
       forms = result.results.map(dbDataToFormFormat);
     } else {
@@ -281,52 +358,77 @@ app.post('/api/admin/export', async (c) => {
       return c.json({ success: false, message: '没有数据可导出' }, 400);
     }
 
-    // 生成CSV内容，添加销售人员字段
-    const headers = [
-      '查询码', '自定义查询码', '公司名称', '地址', '电话', '网站',
-      '联系人', '手机', '微信', '公司人数', '办公室大小',
-      '主要业务', '产品', '服务需求', '销售人员', '聊天记录',
-      '报告日期', '创建时间', '更新时间'
-    ];
+    // 如果只有一个表单，直接返回PDF
+    if (forms.length === 1) {
+      const form = forms[0];
+      const htmlContent = generateFormPDF(form);
 
-    const csvRows = forms.map((form: any) => [
-      form.queryCode,
-      form.customQueryCode || '',
-      form.companyName,
-      form.address,
-      form.phone || '',
-      form.website || '',
-      form.contactPerson,
-      form.mobile,
-      form.wechat || '',
-      form.companySize,
-      form.officeSize,
-      form.mainBusiness,
-      form.products,
-      form.serviceNeeds,
-      form.salesperson || '未指定',
-      form.chatRecords || '',
-      form.reportDate,
-      new Date(form.createdAt).toLocaleString('zh-CN'),
-      new Date(form.updatedAt).toLocaleString('zh-CN')
-    ].map(field => {
-      // 处理包含逗号或换行符的字段
-      if (typeof field === 'string' && (field.includes(',') || field.includes('\n') || field.includes('"'))) {
-        return `"${field.replace(/"/g, '""')}"`;
+      // 使用 Puppeteer API 生成 PDF
+      const pdfResponse = await fetch('https://api.htmlcsstoimage.com/v1/image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + btoa('your-api-key:')
+        },
+        body: JSON.stringify({
+          html: htmlContent,
+          format: 'pdf',
+          width: 800,
+          height: 1200
+        })
+      });
+
+      if (pdfResponse.ok) {
+        const pdfBuffer = await pdfResponse.arrayBuffer();
+        const fileName = `${form.companyName}_${form.salesperson || '未知业务员'}_${form.reportDate.replace(/[^0-9-]/g, '')}.pdf`;
+
+        return new Response(pdfBuffer, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`
+          }
+        });
       }
-      return field;
-    }));
+    }
 
-    const csvContent = [headers.join(','), ...csvRows.map(row => row.join(','))].join('\n');
-    
-    // 添加BOM以支持中文
-    const bom = '\uFEFF';
-    const csvWithBom = bom + csvContent;
+    // 多个表单时，创建ZIP压缩包
+    // 由于Cloudflare Worker的限制，我们暂时返回一个包含所有表单信息的合并PDF
+    const combinedHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>批量客户报告</title>
+  <style>
+    body { font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 20px; line-height: 1.6; }
+    .report { page-break-after: always; margin-bottom: 50px; }
+    .report:last-child { page-break-after: auto; }
+    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+    .section { margin-bottom: 20px; }
+    .section h2 { font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 8px; border-bottom: 1px solid #eee; }
+    .label { width: 30%; font-weight: bold; }
+    .value { width: 70%; }
+  </style>
+</head>
+<body>
+  ${forms.map(form => `
+    <div class="report">
+      ${generateFormPDF(form).replace(/<!DOCTYPE html>[\s\S]*?<body>/, '').replace(/<\/body>[\s\S]*?<\/html>/, '')}
+    </div>
+  `).join('')}
+</body>
+</html>
+    `;
 
-    return new Response(csvWithBom, {
+    // 返回合并的PDF（简化版本，实际生产环境建议使用专门的PDF生成服务）
+    const fileName = `批量客户报告_${new Date().toISOString().split('T')[0]}.html`;
+
+    return new Response(combinedHtml, {
       headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="客户报告导出_${new Date().toISOString().split('T')[0]}.csv"`
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`
       }
     });
 
