@@ -526,7 +526,11 @@ app.post('/api/nextcloud/upload', async (c) => {
     }
 
     // 构建WebDAV URL
-    const webdavUrl = `${config.serverUrl.replace(/\/$/, '')}/remote.php/dav/files/${config.username}${config.targetPath}/${fileName}`;
+    const baseUrl = config.serverUrl.replace(/\/$/, '');
+    const targetPath = config.targetPath.startsWith('/') ? config.targetPath : `/${config.targetPath}`;
+    const webdavUrl = `${baseUrl}/remote.php/dav/files/${config.username}${targetPath}/${fileName}`;
+
+    console.log(`📤 构建WebDAV URL: ${webdavUrl}`);
 
     // 创建Basic Auth头
     const auth = btoa(`${config.username}:${config.password}`);
@@ -539,6 +543,9 @@ app.post('/api/nextcloud/upload', async (c) => {
     }
 
     console.log(`📤 上传文件到Nextcloud: ${webdavUrl}`);
+    console.log(`👤 用户名: ${config.username}`);
+    console.log(`📁 目标路径: ${targetPath}`);
+    console.log(`📄 文件名: ${fileName}`);
 
     // 上传文件到Nextcloud
     const uploadResponse = await fetch(webdavUrl, {
@@ -546,10 +553,13 @@ app.post('/api/nextcloud/upload', async (c) => {
       headers: {
         'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/pdf',
-        'Content-Length': bytes.length.toString()
+        'Content-Length': bytes.length.toString(),
+        'User-Agent': 'CS-Report-System/1.0'
       },
       body: bytes
     });
+
+    console.log(`📡 上传响应状态: ${uploadResponse.status} ${uploadResponse.statusText}`);
 
     if (uploadResponse.ok || uploadResponse.status === 201) {
       console.log('✅ 文件上传成功');
@@ -585,12 +595,27 @@ app.post('/api/nextcloud/upload', async (c) => {
         }
       });
     } else {
-      const errorText = await uploadResponse.text();
-      console.error('❌ Nextcloud上传失败:', uploadResponse.status, errorText);
+      const errorText = await uploadResponse.text().catch(() => '无法获取错误详情');
+      console.error('❌ Nextcloud上传失败:', {
+        status: uploadResponse.status,
+        statusText: uploadResponse.statusText,
+        url: webdavUrl,
+        errorBody: errorText,
+        config: {
+          serverUrl: config.serverUrl,
+          username: config.username,
+          targetPath: config.targetPath
+        }
+      });
 
       return c.json({
         success: false,
-        message: `上传失败: ${uploadResponse.status} ${uploadResponse.statusText}`
+        message: `上传失败: ${uploadResponse.status} ${uploadResponse.statusText}`,
+        error: errorText,
+        debug: {
+          url: webdavUrl,
+          status: uploadResponse.status
+        }
       }, uploadResponse.status);
     }
 
@@ -647,5 +672,68 @@ function generateEmailHTML(formData: any): string {
     </div>
   `;
 }
+
+// 获取Nextcloud配置的辅助函数
+async function getNextcloudConfig(db: D1Database) {
+  // 这里应该从数据库或环境变量获取配置
+  // 暂时返回null，需要根据实际情况实现
+  return null;
+}
+
+// 测试Nextcloud连接
+app.get('/api/test-nextcloud', async (c) => {
+  try {
+    // 从请求参数获取配置信息
+    const serverUrl = c.req.query('serverUrl');
+    const username = c.req.query('username');
+    const password = c.req.query('password');
+    const targetPath = c.req.query('targetPath') || '/Sales Report';
+
+    if (!serverUrl || !username || !password) {
+      return c.json({
+        success: false,
+        message: '缺少必要的连接参数：serverUrl, username, password'
+      }, 400);
+    }
+
+    const auth = btoa(`${username}:${password}`);
+    const baseUrl = serverUrl.replace(/\/$/, '');
+    const testUrl = `${baseUrl}/remote.php/dav/files/${username}/`;
+
+    console.log(`🔍 测试Nextcloud连接: ${testUrl}`);
+
+    const response = await fetch(testUrl, {
+      method: 'PROPFIND',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Depth': '1',
+        'User-Agent': 'CS-Report-System/1.0'
+      }
+    });
+
+    const responseText = await response.text().catch(() => '无法获取响应内容');
+
+    return c.json({
+      success: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      message: response.ok ? '连接成功' : '连接失败',
+      config: {
+        serverUrl: serverUrl,
+        username: username,
+        targetPath: targetPath,
+        testUrl: testUrl
+      },
+      response: response.ok ? '连接正常' : responseText.substring(0, 500)
+    });
+  } catch (error) {
+    console.error('❌ 测试Nextcloud连接失败:', error);
+    return c.json({
+      success: false,
+      message: '测试连接时出错',
+      error: error instanceof Error ? error.message : String(error)
+    }, 500);
+  }
+});
 
 export default app;

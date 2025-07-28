@@ -1,6 +1,6 @@
 name = "cs-report-worker"
 main = "src/index.ts"
-compatibility_date = "2024-01-15"
+compatibility_date = "2025-07-28"
 compatibility_flags = ["nodejs_compat"]
 
 # D1 数据库绑定
