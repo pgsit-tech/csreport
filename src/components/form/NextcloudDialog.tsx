@@ -28,40 +28,45 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
   const [message, setMessage] = useState('');
   const [config, setConfig] = useState<NextcloudConfig | null>(null);
 
-  // 从localStorage获取配置
-  const loadConfig = () => {
-    const enabled = localStorage.getItem('nextcloud_enabled') === 'true';
-    if (!enabled) {
-      setMessage('Nextcloud功能未启用，请联系管理员配置');
+  // 从API获取配置
+  const loadConfig = async () => {
+    try {
+      const response = await fetchWithFallback('nextcloudConfig');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const config: NextcloudConfig = {
+          serverUrl: result.data.serverUrl,
+          username: result.data.username,
+          password: '', // 密码不从API返回，需要重新输入
+          targetPath: result.data.uploadPath
+        };
+        return config;
+      } else {
+        setMessage('Nextcloud配置未设置，请联系管理员配置');
+        setUploadStatus('error');
+        return null;
+      }
+    } catch (error) {
+      console.error('获取Nextcloud配置失败:', error);
+      setMessage('获取Nextcloud配置失败，请联系管理员');
       setUploadStatus('error');
       return null;
     }
-
-    const config: NextcloudConfig = {
-      serverUrl: localStorage.getItem('nextcloud_server_url') || '',
-      username: localStorage.getItem('nextcloud_username') || '',
-      password: localStorage.getItem('nextcloud_password') || '',
-      targetPath: localStorage.getItem('nextcloud_target_path') || '/图书馆/业务报告'
-    };
-
-    if (!config.serverUrl || !config.username || !config.password) {
-      setMessage('Nextcloud配置不完整，请联系管理员配置');
-      setUploadStatus('error');
-      return null;
-    }
-
-    return config;
   };
 
   // 组件初始化时加载配置
   useEffect(() => {
-    const initialConfig = loadConfig();
-    setConfig(initialConfig);
+    const initConfig = async () => {
+      const initialConfig = await loadConfig();
+      setConfig(initialConfig);
+    };
+    initConfig();
   }, []);
 
   // 推送到Nextcloud
   const handlePushToNextcloud = async () => {
-    const currentConfig = config || loadConfig();
+    const currentConfig = config || await loadConfig();
     if (!currentConfig) {
       return;
     }
@@ -91,11 +96,10 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
             configPath: currentConfig.targetPath
           });
 
-          // 调用后端API上传到Nextcloud
+          // 调用后端API上传到Nextcloud（配置从数据库获取）
           const response = await fetchWithFallback('nextcloudUpload', {
             method: 'POST',
             body: JSON.stringify({
-              config: currentConfig,
               fileName,
               fileContent: base64Content,
               formData

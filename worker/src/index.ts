@@ -552,7 +552,23 @@ app.get('/api/admin/stats', async (c) => {
 // Nextcloud上传接口
 app.post('/api/nextcloud/upload', async (c) => {
   try {
-    const { config, fileName, fileContent, formData } = await c.req.json();
+    const { fileName, fileContent, formData } = await c.req.json();
+
+    // 从数据库获取配置
+    const dbConfig = await getNextcloudConfig(c.env.DB);
+    if (!dbConfig) {
+      return c.json({
+        success: false,
+        message: 'Nextcloud配置未设置，请联系管理员配置'
+      }, 400);
+    }
+
+    const config = {
+      serverUrl: dbConfig.server_url,
+      username: dbConfig.username,
+      password: dbConfig.password,
+      targetPath: dbConfig.upload_path
+    };
 
     // 验证必要参数
     if (!config.serverUrl || !config.username || !config.password || !fileName || !fileContent) {
@@ -742,9 +758,13 @@ function generateEmailHTML(formData: any): string {
 
 // 获取Nextcloud配置的辅助函数
 async function getNextcloudConfig(db: D1Database) {
-  // 这里应该从数据库或环境变量获取配置
-  // 暂时返回null，需要根据实际情况实现
-  return null;
+  try {
+    const result = await db.prepare('SELECT * FROM nextcloud_config WHERE id = 1').first();
+    return result;
+  } catch (error) {
+    console.error('获取Nextcloud配置失败:', error);
+    return null;
+  }
 }
 
 // 测试Nextcloud连接
@@ -822,6 +842,68 @@ app.get('/api/test-nextcloud', async (c) => {
       message: '测试连接时出错',
       error: error instanceof Error ? error.message : String(error)
     }, 500);
+  }
+});
+
+// 获取Nextcloud配置
+app.get('/api/nextcloud/config', async (c) => {
+  try {
+    const config = await getNextcloudConfig(c.env.DB);
+
+    if (!config) {
+      return c.json({
+        success: false,
+        message: 'Nextcloud配置未设置'
+      }, 404);
+    }
+
+    // 不返回密码，只返回其他配置信息
+    return c.json({
+      success: true,
+      data: {
+        serverUrl: config.server_url,
+        username: config.username,
+        uploadPath: config.upload_path,
+        hasPassword: !!config.password
+      },
+      message: '配置获取成功'
+    });
+
+  } catch (error) {
+    console.error('获取Nextcloud配置时出错:', error);
+    return c.json({ success: false, message: '获取配置失败' }, 500);
+  }
+});
+
+// 保存Nextcloud配置
+app.post('/api/nextcloud/config', async (c) => {
+  try {
+    const { serverUrl, username, password, uploadPath } = await c.req.json();
+
+    // 验证必要参数
+    if (!serverUrl || !username || !password) {
+      return c.json({
+        success: false,
+        message: '服务器地址、用户名和密码不能为空'
+      }, 400);
+    }
+
+    const finalUploadPath = uploadPath || '/CS Report';
+
+    // 保存或更新配置
+    await c.env.DB.prepare(`
+      INSERT OR REPLACE INTO nextcloud_config (id, server_url, username, password, upload_path, updated_at)
+      VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind(serverUrl, username, password, finalUploadPath).run();
+
+    return c.json({
+      success: true,
+      message: 'Nextcloud配置保存成功'
+    });
+
+  } catch (error) {
+    console.error('保存Nextcloud配置时出错:', error);
+    return c.json({ success: false, message: '保存配置失败' }, 500);
   }
 });
 

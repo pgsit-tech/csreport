@@ -29,6 +29,7 @@ import { fetchWithFallback } from '@/lib/config';
 import LoginForm from '@/components/admin/LoginForm';
 import AdminSettings from '@/components/admin/AdminSettings';
 import DataCleanup from '@/components/admin/DataCleanup';
+import NextcloudConfigDialog from '@/components/admin/NextcloudConfigDialog';
 import { exportFormsAsZip, exportAllFormsAsZip, exportSingleFormAsPDF } from '@/lib/batch-pdf-export';
 
 interface AdminStats {
@@ -42,6 +43,7 @@ export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDataCleanup, setShowDataCleanup] = useState(false);
+  const [showNextcloudConfig, setShowNextcloudConfig] = useState(false);
   const [selectedForms, setSelectedForms] = useState<string[]>([]);
   const [forms, setForms] = useState<FormData[]>([]);
   const [filteredForms, setFilteredForms] = useState<FormData[]>([]);
@@ -221,6 +223,18 @@ export default function AdminPage() {
     return <DataCleanup onClose={() => setShowDataCleanup(false)} />;
   }
 
+  // 如果显示Nextcloud配置页面
+  if (showNextcloudConfig) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <NextcloudConfigDialog
+          isOpen={showNextcloudConfig}
+          onClose={() => setShowNextcloudConfig(false)}
+        />
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -244,13 +258,17 @@ export default function AdminPage() {
             <p className="text-gray-600">查看和管理所有客户报告</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowNextcloudConfig(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Nextcloud配置
+            </Button>
             <Button variant="outline" onClick={() => setShowDataCleanup(true)}>
               <Database className="h-4 w-4 mr-2" />
               数据清理
             </Button>
             <Button variant="outline" onClick={() => setShowSettings(true)}>
               <Settings className="h-4 w-4 mr-2" />
-              设置
+              系统设置
             </Button>
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />

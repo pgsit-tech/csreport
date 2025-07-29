@@ -69,3 +69,14 @@ CREATE TABLE IF NOT EXISTS upload_logs (
 
 CREATE INDEX IF NOT EXISTS idx_upload_logs_form_id ON upload_logs(form_id);
 CREATE INDEX IF NOT EXISTS idx_upload_logs_uploaded_at ON upload_logs(uploaded_at);
+
+-- Nextcloud配置表
+CREATE TABLE IF NOT EXISTS nextcloud_config (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  server_url TEXT NOT NULL,
+  username TEXT NOT NULL,
+  password TEXT NOT NULL,
+  upload_path TEXT NOT NULL DEFAULT '/CS Report',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
