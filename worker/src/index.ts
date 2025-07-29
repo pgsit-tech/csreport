@@ -552,23 +552,37 @@ app.get('/api/admin/stats', async (c) => {
 // Nextcloud上传接口
 app.post('/api/nextcloud/upload', async (c) => {
   try {
-    const { fileName, fileContent, formData } = await c.req.json();
+    const { config: requestConfig, fileName, fileContent, formData } = await c.req.json();
 
-    // 从数据库获取配置
-    const dbConfig = await getNextcloudConfig(c.env.DB);
-    if (!dbConfig) {
-      return c.json({
-        success: false,
-        message: 'Nextcloud配置未设置，请联系管理员配置'
-      }, 400);
+    let config;
+
+    // 如果请求中包含config参数，使用传递的配置（用于测试）
+    if (requestConfig && requestConfig.serverUrl && requestConfig.username && requestConfig.password) {
+      console.log('🔧 使用请求中的配置参数（测试模式）');
+      config = {
+        serverUrl: requestConfig.serverUrl,
+        username: requestConfig.username,
+        password: requestConfig.password,
+        targetPath: requestConfig.targetPath || '/Sales Report'
+      };
+    } else {
+      // 否则从数据库获取配置（正常模式）
+      console.log('🗄️ 从数据库获取配置（正常模式）');
+      const dbConfig = await getNextcloudConfig(c.env.DB);
+      if (!dbConfig) {
+        return c.json({
+          success: false,
+          message: 'Nextcloud配置未设置，请联系管理员配置'
+        }, 400);
+      }
+
+      config = {
+        serverUrl: dbConfig.server_url,
+        username: dbConfig.username,
+        password: dbConfig.password,
+        targetPath: dbConfig.upload_path
+      };
     }
-
-    const config = {
-      serverUrl: dbConfig.server_url,
-      username: dbConfig.username,
-      password: dbConfig.password,
-      targetPath: dbConfig.upload_path
-    };
 
     // 验证必要参数
     if (!config.serverUrl || !config.username || !config.password || !fileName || !fileContent) {
