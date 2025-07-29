@@ -34,12 +34,28 @@ export function formatDateTime(date: Date): string {
   return date.toISOString();
 }
 
-// 生成PDF文件名：客户名称+销售人员+日期
+// 计算日期是一年中的第几周
+export function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+// 生成PDF文件名：业务员+周数+客户名称+日期
 export function generatePDFFileName(companyName: string, salesperson: string, date: string): string {
   const cleanCompanyName = companyName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
   const cleanSalesperson = (salesperson || '未知销售').replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
   const cleanDate = date.replace(/[^0-9-]/g, '');
-  return `${cleanCompanyName}_${cleanSalesperson}_${cleanDate}.pdf`;
+
+  // 计算周数
+  const reportDate = new Date(date);
+  const weekNumber = getWeekNumber(reportDate);
+  const year = reportDate.getFullYear();
+  const weekStr = `${year}年第${weekNumber}周`;
+
+  return `${cleanSalesperson}_${weekStr}_${cleanCompanyName}_${cleanDate}.pdf`;
 }
 
 // 验证查询码格式

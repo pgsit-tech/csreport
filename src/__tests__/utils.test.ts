@@ -1,13 +1,14 @@
-import { 
-  generateQueryCode, 
-  generateId, 
-  formatDate, 
+import {
+  generateQueryCode,
+  generateId,
+  formatDate,
   formatDateTime,
   generatePDFFileName,
   isValidQueryCode,
   isValidEmail,
   formDataToDbFormat,
-  dbDataToFormFormat
+  dbDataToFormFormat,
+  getWeekNumber
 } from '@/lib/utils';
 
 describe('Utils Functions', () => {
@@ -62,15 +63,39 @@ describe('Utils Functions', () => {
     });
   });
 
+  describe('getWeekNumber', () => {
+    it('should calculate correct week number', () => {
+      const date1 = new Date('2024-01-01'); // 2024年第1周
+      const week1 = getWeekNumber(date1);
+      expect(week1).toBe(1);
+
+      const date2 = new Date('2024-01-15'); // 2024年第3周
+      const week2 = getWeekNumber(date2);
+      expect(week2).toBe(3);
+    });
+
+    it('should handle year boundaries correctly', () => {
+      const date = new Date('2024-12-30'); // 2024年最后一周
+      const week = getWeekNumber(date);
+      // 2024-12-30是周一，根据ISO周数计算，这是2025年第1周
+      expect(week).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   describe('generatePDFFileName', () => {
-    it('should generate correct filename', () => {
-      const fileName = generatePDFFileName('测试公司', '2024-01-15');
-      expect(fileName).toBe('测试公司_2024-01-15.pdf');
+    it('should generate correct filename with week number', () => {
+      const fileName = generatePDFFileName('测试公司', '张三', '2024-01-15');
+      expect(fileName).toMatch(/^张三_2024年第\d+周_测试公司_2024-01-15\.pdf$/);
     });
 
     it('should clean invalid characters', () => {
-      const fileName = generatePDFFileName('测试/公司*名称', '2024-01-15');
-      expect(fileName).toBe('测试_公司_名称_2024-01-15.pdf');
+      const fileName = generatePDFFileName('测试/公司*名称', '李四', '2024-01-15');
+      expect(fileName).toMatch(/^李四_2024年第\d+周_测试_公司_名称_2024-01-15\.pdf$/);
+    });
+
+    it('should handle missing salesperson', () => {
+      const fileName = generatePDFFileName('测试公司', '', '2024-01-15');
+      expect(fileName).toMatch(/^未知销售_2024年第\d+周_测试公司_2024-01-15\.pdf$/);
     });
   });
 

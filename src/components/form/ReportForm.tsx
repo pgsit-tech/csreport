@@ -112,7 +112,7 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
     }
   };
 
-  const handlePushToLibrary = () => {
+  const handlePushToLibrary = async () => {
     const formData = getValues();
     const libraryData: FormData = {
       ...formData,
@@ -121,6 +121,24 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     } as FormData;
+
+    // 如果表单还没有保存（没有queryCode），先自动保存
+    if (!libraryData.queryCode && onSubmit) {
+      try {
+        setIsSubmitting(true);
+        const result = await onSubmit(libraryData);
+        if (result.success && result.queryCode) {
+          libraryData.queryCode = result.queryCode;
+          setSubmitResult(result);
+          setCurrentFormData({ ...libraryData, queryCode: result.queryCode });
+        }
+      } catch (error) {
+        console.error('自动保存失败:', error);
+        // 即使保存失败，也允许推送到图书馆，但没有查询码
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
 
     setCurrentFormData(libraryData);
     setShowNextcloudDialog(true);

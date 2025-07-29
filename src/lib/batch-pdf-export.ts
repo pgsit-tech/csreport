@@ -126,17 +126,25 @@ async function generateSingleFormPDF(formData: FormData): Promise<{ pdfBlob: Blo
     // 将元素添加到DOM中
     document.body.appendChild(element);
 
-    // 使用html2canvas生成canvas
+    // 使用html2canvas生成canvas，优化设置以减小文件大小
     const canvas = await html2canvas(element, {
-      scale: 2,
+      scale: 1.5, // 降低scale以减小文件大小
       useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff'
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      foreignObjectRendering: false,
+      imageTimeout: 15000,
+      removeContainer: true
     });
 
     // 创建PDF
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true // 启用PDF压缩
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.85); // 使用JPEG格式，质量85%
 
     const imgWidth = 210;
     const pageHeight = 295;
@@ -144,13 +152,13 @@ async function generateSingleFormPDF(formData: FormData): Promise<{ pdfBlob: Blo
     let heightLeft = imgHeight;
     let position = 0;
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
 
     while (heightLeft >= 0) {
       position = heightLeft - imgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
     }
 
