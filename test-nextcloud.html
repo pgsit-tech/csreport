@@ -139,8 +139,9 @@
                     return;
                 }
                 
-                // 创建一个简单的测试PDF内容（Base64编码的简单PDF）
-                const testPdfBase64 = 'JVBERi0xLjQKJcOkw7zDtsO4CjIgMCBvYmoKPDwKL0xlbmd0aCAzIDAgUgo+PgpzdHJlYW0KQNC0xLjQKJcOkw7zDtsO4CjIgMCBvYmoKPDwKL0xlbmd0aCAzIDAgUgo+PgpzdHJlYW0K';
+                // 创建一个简单的测试内容（使用文本转Base64）
+                const testContent = "This is a test file for Nextcloud upload.\nGenerated at: " + new Date().toISOString();
+                const testPdfBase64 = btoa(testContent);
                 
                 showResult('正在测试上传...', 'info');
                 
@@ -151,7 +152,7 @@
                     },
                     body: JSON.stringify({
                         config,
-                        fileName: 'test-upload.pdf',
+                        fileName: 'test-upload.txt',
                         fileContent: testPdfBase64,
                         formData: {
                             companyName: '测试公司',

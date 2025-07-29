@@ -528,15 +528,16 @@ app.post('/api/nextcloud/upload', async (c) => {
     // 构建WebDAV URL
     const baseUrl = config.serverUrl.replace(/\/$/, '');
     let webdavUrl;
+    let targetPath;
 
     // 检查服务器地址是否已经包含完整的WebDAV路径
     if (baseUrl.includes('/remote.php/dav/files/')) {
       // 如果已经包含完整路径，直接使用
-      const targetPath = config.targetPath.startsWith('/') ? config.targetPath : `/${config.targetPath}`;
+      targetPath = config.targetPath.startsWith('/') ? config.targetPath : `/${config.targetPath}`;
       webdavUrl = `${baseUrl}${targetPath}/${fileName}`;
     } else {
       // 如果是基础URL，构建完整的WebDAV路径
-      const targetPath = config.targetPath.startsWith('/') ? config.targetPath : `/${config.targetPath}`;
+      targetPath = config.targetPath.startsWith('/') ? config.targetPath : `/${config.targetPath}`;
       webdavUrl = `${baseUrl}/remote.php/dav/files/${config.username}${targetPath}/${fileName}`;
     }
 
