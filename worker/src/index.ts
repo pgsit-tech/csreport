@@ -63,12 +63,21 @@ app.post('/api/submit', async (c) => {
   try {
     const formData = await c.req.json();
     
-    // 验证必填字段
-    const requiredFields = ['companyName', 'address', 'contactPerson', 'mobile', 'companySize', 'officeSize', 'mainBusiness', 'products', 'serviceNeeds'];
-    for (const field of requiredFields) {
+    // 验证核心必填字段（推送到图书馆时只需要这些基本信息）
+    const coreRequiredFields = ['companyName', 'salesperson'];
+    for (const field of coreRequiredFields) {
       if (!formData[field]) {
         return c.json({ success: false, message: `${field} 是必填字段` }, 400);
       }
+    }
+
+    // 验证完整表单的必填字段（正常提交时需要）
+    const allRequiredFields = ['companyName', 'address', 'contactPerson', 'mobile', 'companySize', 'officeSize', 'mainBusiness', 'products', 'serviceNeeds'];
+    const missingFields = allRequiredFields.filter(field => !formData[field]);
+
+    // 如果缺少字段但有业务员信息，说明是推送到图书馆的自动保存，允许部分字段为空
+    if (missingFields.length > 0 && !formData.salesperson) {
+      return c.json({ success: false, message: `缺少必填字段: ${missingFields.join(', ')}` }, 400);
     }
 
     // 转换为数据库格式
