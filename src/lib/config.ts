@@ -52,7 +52,7 @@ export async function fetchWithFallback(
       ...options.headers,
     },
     mode: 'cors',
-    credentials: 'omit', // 不发送凭据以避免CORS问题
+    credentials: 'omit', // 暂时禁用凭据以排除CORS问题
   };
 
   console.log(`🚀 API调用: ${endpoint}`, {

@@ -83,7 +83,14 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
         
         try {
           setMessage('正在上传到Nextcloud...');
-          
+
+          console.log('🚀 开始上传到Nextcloud:', {
+            fileName,
+            configServer: currentConfig.serverUrl,
+            configUser: currentConfig.username,
+            configPath: currentConfig.targetPath
+          });
+
           // 调用后端API上传到Nextcloud
           const response = await fetchWithFallback('nextcloudUpload', {
             method: 'POST',
@@ -95,7 +102,16 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
             })
           });
 
+          console.log('📡 API响应状态:', response.status, response.statusText);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ API响应错误:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+
           const result = await response.json();
+          console.log('📦 API响应数据:', result);
           
           if (result.success) {
             setUploadStatus('success');
@@ -105,9 +121,25 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
             setMessage(result.message || '上传失败，请检查配置信息');
           }
         } catch (error) {
+          console.error('❌ 网络请求失败:', error);
           setUploadStatus('error');
-          setMessage('网络错误，请稍后重试');
-          console.error('Upload error:', error);
+
+          let errorMessage = '上传失败: ';
+          if (error instanceof Error) {
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+              errorMessage += '网络连接失败，请检查网络连接或稍后重试';
+            } else if (error.message.includes('CORS')) {
+              errorMessage += '跨域请求被阻止，请联系管理员检查服务器配置';
+            } else if (error.message.includes('HTTP')) {
+              errorMessage += error.message;
+            } else {
+              errorMessage += '网络错误，请稍后重试';
+            }
+          } else {
+            errorMessage += '未知网络错误';
+          }
+
+          setMessage(errorMessage);
         }
       };
       
