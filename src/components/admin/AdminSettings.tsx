@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchWithFallback } from '@/lib/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,11 +34,11 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
   });
 
   const [nextcloudConfig, setNextcloudConfig] = useState<NextcloudConfig>({
-    serverUrl: localStorage.getItem('nextcloud_server_url') || '',
-    username: localStorage.getItem('nextcloud_username') || '',
-    password: localStorage.getItem('nextcloud_password') || '',
-    targetPath: localStorage.getItem('nextcloud_target_path') || '/图书馆/业务报告',
-    enabled: localStorage.getItem('nextcloud_enabled') === 'true'
+    serverUrl: '',
+    username: '',
+    password: '',
+    targetPath: '/图书馆/业务报告',
+    enabled: false
   });
 
   const [passwords, setPasswords] = useState({
@@ -48,6 +49,31 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  // 加载Nextcloud配置
+  useEffect(() => {
+    loadNextcloudConfig();
+  }, []);
+
+  const loadNextcloudConfig = async () => {
+    try {
+      const response = await fetchWithFallback('nextcloudConfig');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setNextcloudConfig({
+          serverUrl: result.data.serverUrl,
+          username: result.data.username,
+          password: '', // 密码需要重新输入
+          targetPath: result.data.uploadPath,
+          enabled: true
+        });
+      }
+    } catch (error) {
+      console.error('加载Nextcloud配置失败:', error);
+      // 如果加载失败，保持默认状态
+    }
+  };
 
   const handleInfoUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,15 +111,37 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
     setMessage('');
 
     try {
-      // 保存到本地存储
-      localStorage.setItem('nextcloud_server_url', nextcloudConfig.serverUrl);
-      localStorage.setItem('nextcloud_username', nextcloudConfig.username);
-      localStorage.setItem('nextcloud_password', nextcloudConfig.password);
-      localStorage.setItem('nextcloud_target_path', nextcloudConfig.targetPath);
-      localStorage.setItem('nextcloud_enabled', nextcloudConfig.enabled.toString());
+      if (nextcloudConfig.enabled) {
+        // 验证必要字段
+        if (!nextcloudConfig.serverUrl || !nextcloudConfig.username || !nextcloudConfig.password) {
+          setMessage('请填写完整的Nextcloud配置信息');
+          setLoading(false);
+          return;
+        }
 
-      setMessage('Nextcloud配置已更新');
-    } catch {
+        // 保存到数据库
+        const response = await fetchWithFallback('nextcloudConfig', {
+          method: 'POST',
+          body: JSON.stringify({
+            serverUrl: nextcloudConfig.serverUrl,
+            username: nextcloudConfig.username,
+            password: nextcloudConfig.password,
+            uploadPath: nextcloudConfig.targetPath
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          setMessage('Nextcloud配置已保存到数据库');
+        } else {
+          setMessage(result.message || '保存失败');
+        }
+      } else {
+        setMessage('Nextcloud功能已禁用');
+      }
+    } catch (error) {
+      console.error('保存Nextcloud配置失败:', error);
       setMessage('配置更新失败，请重试');
     } finally {
       setLoading(false);
