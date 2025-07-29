@@ -114,6 +114,8 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
 
   const handlePushToLibrary = async () => {
     const formData = getValues();
+    console.log('📝 推送到图书馆 - 原始表单数据:', formData);
+
     const libraryData: FormData = {
       ...formData,
       queryCode: submitResult?.queryCode || currentFormData?.queryCode || '',
@@ -122,18 +124,35 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
       updatedAt: new Date().toISOString()
     } as FormData;
 
+    console.log('📋 推送到图书馆 - 处理后数据:', libraryData);
+    console.log('🔍 查询码状态:', libraryData.queryCode);
+
     // 如果表单还没有保存（没有queryCode），先自动保存
     if (!libraryData.queryCode && onSubmit) {
+      console.log('💾 开始自动保存...');
+
+      // 基本验证
+      if (!libraryData.companyName || !libraryData.salesperson) {
+        console.error('❌ 表单验证失败: 缺少必需字段');
+        alert('请填写公司名称和业务员姓名后再推送');
+        return;
+      }
+
       try {
         setIsSubmitting(true);
         const result = await onSubmit(libraryData);
+        console.log('💾 自动保存结果:', result);
+
         if (result.success && result.queryCode) {
           libraryData.queryCode = result.queryCode;
           setSubmitResult(result);
           setCurrentFormData({ ...libraryData, queryCode: result.queryCode });
+          console.log('✅ 自动保存成功，查询码:', result.queryCode);
+        } else {
+          console.warn('⚠️ 自动保存失败:', result.message);
         }
       } catch (error) {
-        console.error('自动保存失败:', error);
+        console.error('❌ 自动保存异常:', error);
         // 即使保存失败，也允许推送到图书馆，但没有查询码
       } finally {
         setIsSubmitting(false);

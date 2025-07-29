@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Search, Plus } from 'lucide-react';
 import { fetchWithFallback } from '@/lib/config';
+import { formDataToDbFormat } from '@/lib/utils';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<'new' | 'query'>('new');
@@ -64,15 +65,20 @@ export default function Home() {
 
   const handleSubmitForm = async (formData: FormData): Promise<{ success: boolean; queryCode?: string; message?: string }> => {
     try {
+      // 转换表单数据为数据库格式
+      const dbData = formDataToDbFormat(formData);
+      console.log('🔄 转换后的数据库格式:', dbData);
+
       const response = await fetchWithFallback('submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dbData),
       });
 
       const result = await response.json();
+      console.log('📡 API响应结果:', result);
       return result;
     } catch (error) {
       console.error('提交失败:', error);

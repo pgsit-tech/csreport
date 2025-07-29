@@ -88,6 +88,7 @@ export function formDataToDbFormat(data: Record<string, unknown>) {
     products: data.products,
     service_needs: data.serviceNeeds,
     chat_records: data.chatRecords || null,
+    salesperson: data.salesperson, // 添加业务员字段
     report_date: data.reportDate || formatDate(new Date()),
     created_at: formatDateTime(new Date()),
     updated_at: formatDateTime(new Date())
@@ -113,6 +114,7 @@ export function dbDataToFormFormat(data: Record<string, unknown>) {
     products: data.products,
     serviceNeeds: data.service_needs,
     chatRecords: data.chat_records,
+    salesperson: data.salesperson, // 添加业务员字段
     reportDate: data.report_date,
     createdAt: data.created_at,
     updatedAt: data.updated_at

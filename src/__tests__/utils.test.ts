@@ -138,7 +138,8 @@ describe('Utils Functions', () => {
         officeSize: '100平米',
         mainBusiness: '软件开发',
         products: '管理系统',
-        serviceNeeds: '定制开发'
+        serviceNeeds: '定制开发',
+        salesperson: '李四'
       };
 
       const dbData = formDataToDbFormat(formData);
@@ -147,6 +148,7 @@ describe('Utils Functions', () => {
       expect(dbData.address).toBe('测试地址');
       expect(dbData.contact_person).toBe('张三');
       expect(dbData.mobile).toBe('13800138000');
+      expect(dbData.salesperson).toBe('李四');
       expect(dbData.id).toBeDefined();
       expect(dbData.query_code).toBeDefined();
       expect(dbData.created_at).toBeDefined();
@@ -168,6 +170,7 @@ describe('Utils Functions', () => {
         main_business: '软件开发',
         products: '管理系统',
         service_needs: '定制开发',
+        salesperson: '李四',
         report_date: '2024-01-15',
         created_at: '2024-01-15T10:30:00Z',
         updated_at: '2024-01-15T10:30:00Z'
@@ -179,6 +182,7 @@ describe('Utils Functions', () => {
       expect(formData.address).toBe('测试地址');
       expect(formData.contactPerson).toBe('张三');
       expect(formData.mobile).toBe('13800138000');
+      expect(formData.salesperson).toBe('李四');
       expect(formData.queryCode).toBe('ABC12345');
     });
   });
