@@ -2,6 +2,19 @@
 
 本文档详细说明如何将业务员见客报告系统部署到Cloudflare平台。
 
+## 🏗️ 部署架构
+
+### 部署方式说明
+
+- **前端 (Pages)**: 通过GitHub Actions自动部署到Cloudflare Pages
+- **后端 (Worker)**: 通过wrangler CLI手动部署到Cloudflare Workers
+
+### 自动化流程
+
+1. 推送代码到GitHub main分支
+2. GitHub Actions自动构建并部署前端到Pages
+3. Worker需要手动使用wrangler部署
+
 ## 📋 部署前准备
 
 ### 1. 账户和工具

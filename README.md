@@ -82,23 +82,30 @@ npm run dev
 
 ### 部署到生产环境
 
-1. **配置环境变量**
+#### 🏗️ 部署架构
+- **前端 (Pages)**: 通过GitHub Actions自动部署
+- **后端 (Worker)**: 通过wrangler CLI手动部署
+
+#### 1. 前端自动部署
+推送代码到main分支即可自动部署前端：
 ```bash
-cp .env.example .env
-# 编辑 .env 文件，填入你的配置
+git push origin main
 ```
 
-2. **运行部署脚本**
+需要在GitHub仓库设置中添加以下Secrets:
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+#### 2. Worker手动部署
 ```bash
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，填入你的配置
+
+# 部署Worker
 chmod +x deploy.sh
 ./deploy.sh
 ```
-
-3. **或使用GitHub Actions自动部署**
-   - 在GitHub仓库设置中添加以下Secrets:
-     - `CLOUDFLARE_API_TOKEN`
-     - `CLOUDFLARE_ACCOUNT_ID`
-   - 推送代码到main分支即可自动部署
 
 ## 📋 详细部署指南
 
