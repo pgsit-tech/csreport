@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前端推送调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; white-space: pre-wrap; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background-color: #0056b3; }
+        input, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 前端推送到图书馆调试</h1>
+    
+    <div>
+        <h2>📝 模拟表单数据</h2>
+        <label>公司名称:</label>
+        <input type="text" id="companyName" value="测试公司">
+        
+        <label>业务员:</label>
+        <input type="text" id="salesperson" value="测试业务员">
+        
+        <label>地址:</label>
+        <input type="text" id="address" value="">
+        
+        <label>联系人:</label>
+        <input type="text" id="contactPerson" value="">
+        
+        <label>手机:</label>
+        <input type="text" id="mobile" value="">
+        
+        <button onclick="testAutoSave()">🚀 测试自动保存（推送到图书馆）</button>
+        <button onclick="testFullSubmit()">📋 测试完整提交</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // 复制前端的API配置
+        const API_CONFIG = {
+            primaryBaseUrl: 'https://csreport-api.20990909.xyz',
+            fallbackBaseUrl: 'https://cs-report-worker.itsupport-5c8.workers.dev',
+            endpoints: {
+                submit: '/api/submit'
+            }
+        };
+
+        function log(message, type = 'info') {
+            const element = document.getElementById('result');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            element.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('result').innerHTML = '';
+        }
+
+        // 复制前端的fetchWithFallback函数
+        async function fetchWithFallback(endpoint, options = {}) {
+            const endpointPath = API_CONFIG.endpoints[endpoint];
+            const primaryUrl = `${API_CONFIG.primaryBaseUrl}${endpointPath}`;
+            const fallbackUrl = `${API_CONFIG.fallbackBaseUrl}${endpointPath}`;
+
+            const enhancedOptions = {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache',
+                    ...options.headers,
+                },
+                mode: 'cors',
+                credentials: 'omit',
+            };
+
+            console.log(`🚀 API调用: ${endpoint}`, { primaryUrl, method: options.method || 'GET' });
+
+            try {
+                console.log('🔗 尝试连接自定义域名:', primaryUrl);
+                const response = await fetch(primaryUrl, enhancedOptions);
+                console.log(`📡 自定义域名响应:`, response.status, response.statusText);
+
+                if (response.ok) {
+                    console.log('✅ 自定义域名连接成功');
+                    return response;
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+            } catch (error) {
+                console.warn('⚠️ 自定义域名连接失败，尝试备用域名:', error);
+
+                try {
+                    console.log('🔗 尝试连接备用域名:', fallbackUrl);
+                    const response = await fetch(fallbackUrl, enhancedOptions);
+                    console.log(`📡 备用域名响应:`, response.status, response.statusText);
+
+                    if (response.ok) {
+                        console.log('✅ 备用域名连接成功');
+                        return response;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+                } catch (fallbackError) {
+                    console.error('❌ 所有API端点都无法连接:', fallbackError);
+                    throw new Error('无法连接到服务器，请检查网络连接或稍后重试');
+                }
+            }
+        }
+
+        // 复制前端的formDataToDbFormat函数
+        function formDataToDbFormat(data) {
+            return {
+                id: data.id || generateId(),
+                query_code: data.queryCode || generateQueryCode(),
+                custom_query_code: data.customQueryCode || null,
+                company_name: data.companyName || '',
+                address: data.address || '',
+                phone: data.phone || null,
+                website: data.website || null,
+                contact_person: data.contactPerson || '',
+                mobile: data.mobile || '',
+                wechat: data.wechat || null,
+                company_size: data.companySize || '',
+                office_size: data.officeSize || '',
+                main_business: data.mainBusiness || '',
+                products: data.products || '',
+                service_needs: data.serviceNeeds || '',
+                chat_records: data.chatRecords || null,
+                salesperson: data.salesperson || '',
+                report_date: data.reportDate || new Date().toISOString().split('T')[0],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+        }
+
+        function generateId() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function generateQueryCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 8; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        async function testAutoSave() {
+            clearResults();
+            log('🚀 开始测试自动保存（推送到图书馆模式）...', 'info');
+
+            // 收集表单数据（模拟推送到图书馆时的数据）
+            const formData = {
+                companyName: document.getElementById('companyName').value,
+                salesperson: document.getElementById('salesperson').value,
+                address: document.getElementById('address').value,
+                contactPerson: document.getElementById('contactPerson').value,
+                mobile: document.getElementById('mobile').value,
+                companySize: '',
+                officeSize: '',
+                mainBusiness: '',
+                products: '',
+                serviceNeeds: '',
+                reportDate: new Date().toISOString().split('T')[0]
+            };
+
+            log(`📝 原始表单数据:\n${JSON.stringify(formData, null, 2)}`, 'info');
+
+            // 转换为数据库格式
+            const dbData = formDataToDbFormat(formData);
+            log(`🔄 转换后的数据库格式:\n${JSON.stringify(dbData, null, 2)}`, 'info');
+
+            try {
+                log('🚀 开始发送请求...', 'info');
+                const response = await fetchWithFallback('submit', {
+                    method: 'POST',
+                    body: JSON.stringify(dbData)
+                });
+
+                log(`📡 收到响应: ${response.status} ${response.statusText}`, 'info');
+                const result = await response.json();
+                log(`✅ 自动保存成功:\n${JSON.stringify(result, null, 2)}`, 'success');
+            } catch (error) {
+                log(`❌ 自动保存失败: ${error.message}`, 'error');
+                log(`🔍 错误类型: ${error.constructor.name}`, 'error');
+                log(`📋 错误堆栈:\n${error.stack}`, 'error');
+                console.error('详细错误:', error);
+            }
+        }
+
+        async function testFullSubmit() {
+            clearResults();
+            log('📋 开始测试完整表单提交...', 'info');
+
+            // 收集完整表单数据
+            const formData = {
+                companyName: document.getElementById('companyName').value,
+                salesperson: document.getElementById('salesperson').value,
+                address: document.getElementById('address').value || '测试地址',
+                contactPerson: document.getElementById('contactPerson').value || '测试联系人',
+                mobile: document.getElementById('mobile').value || '13800138000',
+                companySize: '50-100人',
+                officeSize: '500-1000平米',
+                mainBusiness: '测试业务',
+                products: '测试产品',
+                serviceNeeds: '测试需求',
+                reportDate: new Date().toISOString().split('T')[0]
+            };
+
+            log(`📝 完整表单数据:\n${JSON.stringify(formData, null, 2)}`, 'info');
+
+            // 转换为数据库格式
+            const dbData = formDataToDbFormat(formData);
+            log(`🔄 转换后的数据库格式:\n${JSON.stringify(dbData, null, 2)}`, 'info');
+
+            try {
+                const response = await fetchWithFallback('submit', {
+                    method: 'POST',
+                    body: JSON.stringify(dbData)
+                });
+
+                const result = await response.json();
+                log(`✅ 完整提交成功:\n${JSON.stringify(result, null, 2)}`, 'success');
+            } catch (error) {
+                log(`❌ 完整提交失败: ${error.message}`, 'error');
+                console.error('详细错误:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -64,22 +64,47 @@ app.post('/api/submit', async (c) => {
     const formData = await c.req.json();
     console.log('📥 收到表单数据:', JSON.stringify(formData, null, 2));
     
+    // 支持两种字段名格式：表单格式(companyName)和数据库格式(company_name)
+    const getFieldValue = (formField: string, dbField: string) => {
+      return formData[formField] || formData[dbField];
+    };
+
     // 验证核心必填字段（推送到图书馆时只需要这些基本信息）
-    const coreRequiredFields = ['companyName', 'salesperson'];
-    for (const field of coreRequiredFields) {
-      if (!formData[field]) {
-        console.error(`❌ 缺少必填字段: ${field}, 值为:`, formData[field]);
-        return c.json({ success: false, message: `${field} 是必填字段` }, 400);
-      }
+    const companyName = getFieldValue('companyName', 'company_name');
+    const salesperson = getFieldValue('salesperson', 'salesperson');
+
+    if (!companyName) {
+      console.error(`❌ 缺少必填字段: companyName/company_name, 值为:`, companyName);
+      return c.json({ success: false, message: 'companyName 是必填字段' }, 400);
     }
+
+    if (!salesperson) {
+      console.error(`❌ 缺少必填字段: salesperson, 值为:`, salesperson);
+      return c.json({ success: false, message: 'salesperson 是必填字段' }, 400);
+    }
+
     console.log('✅ 核心必填字段验证通过');
 
     // 验证完整表单的必填字段（正常提交时需要）
-    const allRequiredFields = ['companyName', 'address', 'contactPerson', 'mobile', 'companySize', 'officeSize', 'mainBusiness', 'products', 'serviceNeeds'];
-    const missingFields = allRequiredFields.filter(field => !formData[field]);
+    const requiredFieldMappings = [
+      { form: 'companyName', db: 'company_name' },
+      { form: 'address', db: 'address' },
+      { form: 'contactPerson', db: 'contact_person' },
+      { form: 'mobile', db: 'mobile' },
+      { form: 'companySize', db: 'company_size' },
+      { form: 'officeSize', db: 'office_size' },
+      { form: 'mainBusiness', db: 'main_business' },
+      { form: 'products', db: 'products' },
+      { form: 'serviceNeeds', db: 'service_needs' }
+    ];
+
+    const missingFields = requiredFieldMappings.filter(mapping => {
+      const value = getFieldValue(mapping.form, mapping.db);
+      return !value;
+    }).map(mapping => mapping.form);
 
     // 如果缺少字段但有业务员信息，说明是推送到图书馆的自动保存，允许部分字段为空
-    if (missingFields.length > 0 && !formData.salesperson) {
+    if (missingFields.length > 0 && !salesperson) {
       return c.json({ success: false, message: `缺少必填字段: ${missingFields.join(', ')}` }, 400);
     }
 
@@ -667,42 +692,47 @@ app.post('/api/nextcloud/upload', async (c) => {
 
 // 生成邮件HTML内容
 function generateEmailHTML(formData: any): string {
+  // 辅助函数：获取字段值，支持表单格式和数据库格式
+  const getFieldValue = (formField: string, dbField: string) => {
+    return formData[formField] || formData[dbField] || '';
+  };
+
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
         业务员见客报告
       </h2>
-      
+
       <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
         <h3 style="color: #495057; margin-top: 0;">基本信息</h3>
         <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 8px; font-weight: bold; width: 30%;">公司名称:</td><td style="padding: 8px;">${formData.companyName}</td></tr>
-          <tr><td style="padding: 8px; font-weight: bold;">联系人:</td><td style="padding: 8px;">${formData.contactPerson}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; width: 30%;">公司名称:</td><td style="padding: 8px;">${getFieldValue('companyName', 'company_name')}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold;">联系人:</td><td style="padding: 8px;">${getFieldValue('contactPerson', 'contact_person')}</td></tr>
           <tr><td style="padding: 8px; font-weight: bold;">手机:</td><td style="padding: 8px;">${formData.mobile}</td></tr>
           <tr><td style="padding: 8px; font-weight: bold;">地址:</td><td style="padding: 8px;">${formData.address}</td></tr>
-          <tr><td style="padding: 8px; font-weight: bold;">报告日期:</td><td style="padding: 8px;">${formData.reportDate}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold;">报告日期:</td><td style="padding: 8px;">${getFieldValue('reportDate', 'report_date')}</td></tr>
         </table>
       </div>
 
       <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px; margin: 20px 0;">
         <h4 style="color: #495057; margin-top: 0;">主要业务</h4>
-        <p style="margin: 5px 0;">${formData.mainBusiness}</p>
+        <p style="margin: 5px 0;">${getFieldValue('mainBusiness', 'main_business')}</p>
         <h4 style="color: #495057;">产品</h4>
         <p style="margin: 5px 0;">${formData.products}</p>
         <h4 style="color: #495057;">服务需求</h4>
-        <p style="margin: 5px 0;">${formData.serviceNeeds}</p>
+        <p style="margin: 5px 0;">${getFieldValue('serviceNeeds', 'service_needs')}</p>
       </div>
 
-      ${formData.chatRecords ? `
+      ${getFieldValue('chatRecords', 'chat_records') ? `
       <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
         <h4 style="color: #856404; margin-top: 0;">聊天记录</h4>
-        <p style="white-space: pre-line; margin: 5px 0;">${formData.chatRecords}</p>
+        <p style="white-space: pre-line; margin: 5px 0;">${getFieldValue('chatRecords', 'chat_records')}</p>
       </div>
       ` : ''}
 
       <div style="text-align: center; margin: 30px 0; padding: 20px; background-color: #d4edda; border-radius: 5px;">
         <p style="margin: 0; color: #155724;">
-          <strong>查询码: ${formData.queryCode}</strong><br>
+          <strong>查询码: ${getFieldValue('queryCode', 'query_code')}</strong><br>
           <small>请保存此查询码以便后续查询报告</small>
         </p>
       </div>

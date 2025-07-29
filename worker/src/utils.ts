@@ -27,27 +27,32 @@ export function formatDateTime(date: Date): string {
   return date.toISOString();
 }
 
-// 转换表单数据为数据库格式
+// 转换表单数据为数据库格式（支持两种输入格式：表单格式和数据库格式）
 export function formDataToDbFormat(data: any) {
+  // 辅助函数：获取字段值，支持表单格式和数据库格式
+  const getFieldValue = (formField: string, dbField: string) => {
+    return data[formField] || data[dbField];
+  };
+
   return {
     id: data.id || generateId(),
-    query_code: data.queryCode || generateQueryCode(),
-    custom_query_code: data.customQueryCode || null,
-    company_name: data.companyName,
+    query_code: getFieldValue('queryCode', 'query_code') || generateQueryCode(),
+    custom_query_code: getFieldValue('customQueryCode', 'custom_query_code') || null,
+    company_name: getFieldValue('companyName', 'company_name'),
     address: data.address,
     phone: data.phone || null,
     website: data.website || null,
-    contact_person: data.contactPerson,
+    contact_person: getFieldValue('contactPerson', 'contact_person'),
     mobile: data.mobile,
     wechat: data.wechat || null,
-    company_size: data.companySize,
-    office_size: data.officeSize,
-    main_business: data.mainBusiness,
+    company_size: getFieldValue('companySize', 'company_size'),
+    office_size: getFieldValue('officeSize', 'office_size'),
+    main_business: getFieldValue('mainBusiness', 'main_business'),
     products: data.products,
-    service_needs: data.serviceNeeds,
+    service_needs: getFieldValue('serviceNeeds', 'service_needs'),
     salesperson: data.salesperson,
-    chat_records: data.chatRecords || null,
-    report_date: data.reportDate || formatDate(new Date()),
+    chat_records: getFieldValue('chatRecords', 'chat_records') || null,
+    report_date: getFieldValue('reportDate', 'report_date') || formatDate(new Date()),
     created_at: formatDateTime(new Date()),
     updated_at: formatDateTime(new Date())
   };
