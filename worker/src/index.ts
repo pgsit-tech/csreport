@@ -558,12 +558,26 @@ app.post('/api/nextcloud/upload', async (c) => {
     console.log(`📁 目标路径: ${targetPath}`);
     console.log(`📄 文件名: ${fileName}`);
 
+    // 根据文件扩展名确定Content-Type
+    const getContentType = (filename: string): string => {
+      const ext = filename.toLowerCase().split('.').pop();
+      switch (ext) {
+        case 'pdf': return 'application/pdf';
+        case 'txt': return 'text/plain';
+        case 'json': return 'application/json';
+        case 'xml': return 'application/xml';
+        case 'html': return 'text/html';
+        case 'csv': return 'text/csv';
+        default: return 'application/octet-stream';
+      }
+    };
+
     // 上传文件到Nextcloud
     const uploadResponse = await fetch(webdavUrl, {
       method: 'PUT',
       headers: {
         'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/pdf',
+        'Content-Type': getContentType(fileName),
         'Content-Length': bytes.length.toString(),
         'User-Agent': 'CS-Report-System/1.0'
       },
