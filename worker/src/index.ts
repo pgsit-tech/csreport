@@ -62,14 +62,17 @@ app.get('/health', async (c) => {
 app.post('/api/submit', async (c) => {
   try {
     const formData = await c.req.json();
+    console.log('📥 收到表单数据:', JSON.stringify(formData, null, 2));
     
     // 验证核心必填字段（推送到图书馆时只需要这些基本信息）
     const coreRequiredFields = ['companyName', 'salesperson'];
     for (const field of coreRequiredFields) {
       if (!formData[field]) {
+        console.error(`❌ 缺少必填字段: ${field}, 值为:`, formData[field]);
         return c.json({ success: false, message: `${field} 是必填字段` }, 400);
       }
     }
+    console.log('✅ 核心必填字段验证通过');
 
     // 验证完整表单的必填字段（正常提交时需要）
     const allRequiredFields = ['companyName', 'address', 'contactPerson', 'mobile', 'companySize', 'officeSize', 'mainBusiness', 'products', 'serviceNeeds'];
