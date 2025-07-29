@@ -3,24 +3,28 @@ const LOG_CONFIG = {
   // 在生产环境中禁用详细日志
   enableDetailedLogs: process.env.NODE_ENV === 'development',
   // 只保留基础错误日志
-  enableErrorLogs: true
+  enableErrorLogs: true,
+  // 进一步简化，只在开发环境显示信息和警告
+  enableInfoLogs: process.env.NODE_ENV === 'development'
 };
 
-// 安全的日志函数
+// 安全的日志函数 - 简化版，只保留错误日志
 export const safeLog = {
   info: (message: string, ...args: unknown[]) => {
-    if (LOG_CONFIG.enableDetailedLogs) {
+    // 生产环境不显示信息日志
+    if (LOG_CONFIG.enableInfoLogs) {
       console.log(message, ...args);
     }
   },
   warn: (message: string, ...args: unknown[]) => {
-    if (LOG_CONFIG.enableDetailedLogs) {
+    // 生产环境不显示警告日志
+    if (LOG_CONFIG.enableInfoLogs) {
       console.warn(message, ...args);
     }
   },
   error: (message: string, ...args: unknown[]) => {
     if (LOG_CONFIG.enableErrorLogs) {
-      // 在生产环境中，只记录基础错误信息，不暴露敏感信息
+      // 在生产环境中，只记录基础错误信息
       if (LOG_CONFIG.enableDetailedLogs) {
         console.error(message, ...args);
       } else {
@@ -28,7 +32,7 @@ export const safeLog = {
       }
     }
   },
-  // 用于开发调试的详细日志
+  // 开发调试日志，生产环境完全不显示
   debug: (message: string, data?: unknown) => {
     if (LOG_CONFIG.enableDetailedLogs) {
       if (data) {

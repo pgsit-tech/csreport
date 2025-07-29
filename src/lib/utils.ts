@@ -46,7 +46,8 @@ export function getWeekNumber(date: Date): number {
 // 生成PDF文件名：业务员+周数+客户名称+日期
 export function generatePDFFileName(companyName: string, salesperson: string, date: string): string {
   const cleanCompanyName = companyName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
-  const cleanSalesperson = (salesperson || '未知销售').replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+  // 业务员姓名保留空格，只替换其他特殊字符
+  const cleanSalesperson = (salesperson || '未知销售').replace(/[^a-zA-Z0-9\u4e00-\u9fa5 ]/g, '_');
   const cleanDate = date.replace(/[^0-9-]/g, '');
 
   // 计算周数
