@@ -66,7 +66,7 @@ export default function Home() {
   const handleSubmitForm = async (formData: FormData): Promise<{ success: boolean; queryCode?: string; message?: string }> => {
     try {
       // 转换表单数据为数据库格式
-      const dbData = formDataToDbFormat(formData);
+      const dbData = formDataToDbFormat(formData as unknown as Record<string, unknown>);
       console.log('🔄 转换后的数据库格式:', dbData);
 
       const response = await fetchWithFallback('submit', {
