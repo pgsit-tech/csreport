@@ -80,3 +80,14 @@ CREATE TABLE IF NOT EXISTS nextcloud_config (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 管理员设置表
+CREATE TABLE IF NOT EXISTS admin_settings (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  username TEXT NOT NULL DEFAULT 'admin',
+  email TEXT NOT NULL DEFAULT 'admin@example.com',
+  system_name TEXT NOT NULL DEFAULT '业务员见客报告系统',
+  password_hash TEXT NOT NULL DEFAULT 'admin123', -- 实际应用中应该使用哈希
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

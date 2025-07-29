@@ -25,7 +25,7 @@ import {
   LogOut,
   Database
 } from 'lucide-react';
-import { fetchWithFallback } from '@/lib/config';
+import { fetchWithFallback, safeLog } from '@/lib/config';
 import LoginForm from '@/components/admin/LoginForm';
 import AdminSettings from '@/components/admin/AdminSettings';
 import DataCleanup from '@/components/admin/DataCleanup';
@@ -134,7 +134,7 @@ export default function AdminPage() {
         setStats(result.stats);
       }
     } catch (error) {
-      console.error('获取表单数据失败:', error);
+      safeLog.error('获取表单数据失败', error);
     } finally {
       setLoading(false);
     }
@@ -148,13 +148,13 @@ export default function AdminPage() {
       }
 
       // 显示加载提示
-      console.log('正在生成PDF文件，请稍候...');
+      safeLog.info('正在生成PDF文件，请稍候...');
 
       // 使用前端PDF生成和压缩功能
       await exportAllFormsAsZip(filteredForms);
 
     } catch (error) {
-      console.error('导出失败:', error);
+      safeLog.error('导出失败', error);
       alert('导出失败，请重试');
     }
   };
@@ -176,15 +176,15 @@ export default function AdminPage() {
 
       // 根据选择数量决定导出方式
       if (selectedFormData.length === 1) {
-        console.log('正在生成单个PDF文件...');
+        safeLog.info('正在生成单个PDF文件...');
         await exportSingleFormAsPDF(selectedFormData[0]);
       } else {
-        console.log(`正在生成${selectedFormData.length}个PDF文件并打包成ZIP...`);
+        safeLog.info(`正在生成${selectedFormData.length}个PDF文件并打包成ZIP...`);
         await exportFormsAsZip(selectedFormData);
       }
 
     } catch (error) {
-      console.error('批量导出失败:', error);
+      safeLog.error('批量导出失败', error);
       alert('批量导出失败，请重试');
     }
   };

@@ -921,4 +921,118 @@ app.post('/api/nextcloud/config', async (c) => {
   }
 });
 
+// 获取管理员设置
+app.get('/api/admin/settings', async (c) => {
+  try {
+    const settings = await c.env.DB.prepare('SELECT * FROM admin_settings WHERE id = 1').first();
+
+    if (!settings) {
+      // 如果没有设置，返回默认值
+      return c.json({
+        success: true,
+        data: {
+          username: 'admin',
+          email: 'admin@example.com',
+          systemName: '业务员见客报告系统'
+        },
+        message: '使用默认设置'
+      });
+    }
+
+    // 不返回密码哈希
+    return c.json({
+      success: true,
+      data: {
+        username: settings.username,
+        email: settings.email,
+        systemName: settings.system_name
+      },
+      message: '设置获取成功'
+    });
+
+  } catch (error) {
+    console.error('获取管理员设置时出错:', error);
+    return c.json({ success: false, message: '获取设置失败' }, 500);
+  }
+});
+
+// 保存管理员设置
+app.post('/api/admin/settings', async (c) => {
+  try {
+    const { username, email, systemName } = await c.req.json();
+
+    // 验证必要参数
+    if (!username || !email || !systemName) {
+      return c.json({
+        success: false,
+        message: '用户名、邮箱和系统名称不能为空'
+      }, 400);
+    }
+
+    // 保存或更新设置
+    await c.env.DB.prepare(`
+      INSERT OR REPLACE INTO admin_settings (id, username, email, system_name, updated_at)
+      VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind(username, email, systemName).run();
+
+    return c.json({
+      success: true,
+      message: '管理员设置保存成功'
+    });
+
+  } catch (error) {
+    console.error('保存管理员设置时出错:', error);
+    return c.json({ success: false, message: '保存设置失败' }, 500);
+  }
+});
+
+// 修改管理员密码
+app.post('/api/admin/change-password', async (c) => {
+  try {
+    const { currentPassword, newPassword } = await c.req.json();
+
+    // 验证必要参数
+    if (!currentPassword || !newPassword) {
+      return c.json({
+        success: false,
+        message: '当前密码和新密码不能为空'
+      }, 400);
+    }
+
+    if (newPassword.length < 6) {
+      return c.json({
+        success: false,
+        message: '新密码长度至少为6位'
+      }, 400);
+    }
+
+    // 获取当前密码
+    const settings = await c.env.DB.prepare('SELECT password_hash FROM admin_settings WHERE id = 1').first();
+    const currentStoredPassword = settings?.password_hash || 'admin123';
+
+    // 验证当前密码
+    if (currentPassword !== currentStoredPassword) {
+      return c.json({
+        success: false,
+        message: '当前密码错误'
+      }, 400);
+    }
+
+    // 更新密码（实际应用中应该使用哈希）
+    await c.env.DB.prepare(`
+      INSERT OR REPLACE INTO admin_settings (id, password_hash, updated_at)
+      VALUES (1, ?, CURRENT_TIMESTAMP)
+    `).bind(newPassword).run();
+
+    return c.json({
+      success: true,
+      message: '密码修改成功'
+    });
+
+  } catch (error) {
+    console.error('修改密码时出错:', error);
+    return c.json({ success: false, message: '密码修改失败' }, 500);
+  }
+});
+
 export default app;

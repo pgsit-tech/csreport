@@ -1,3 +1,45 @@
+// 日志控制配置
+const LOG_CONFIG = {
+  // 在生产环境中禁用详细日志
+  enableDetailedLogs: process.env.NODE_ENV === 'development',
+  // 只保留基础错误日志
+  enableErrorLogs: true
+};
+
+// 安全的日志函数
+export const safeLog = {
+  info: (message: string, ...args: unknown[]) => {
+    if (LOG_CONFIG.enableDetailedLogs) {
+      console.log(message, ...args);
+    }
+  },
+  warn: (message: string, ...args: unknown[]) => {
+    if (LOG_CONFIG.enableDetailedLogs) {
+      console.warn(message, ...args);
+    }
+  },
+  error: (message: string, ...args: unknown[]) => {
+    if (LOG_CONFIG.enableErrorLogs) {
+      // 在生产环境中，只记录基础错误信息，不暴露敏感信息
+      if (LOG_CONFIG.enableDetailedLogs) {
+        console.error(message, ...args);
+      } else {
+        console.error('操作失败，请稍后重试');
+      }
+    }
+  },
+  // 用于开发调试的详细日志
+  debug: (message: string, data?: unknown) => {
+    if (LOG_CONFIG.enableDetailedLogs) {
+      if (data) {
+        console.log(`🔍 ${message}:`, data);
+      } else {
+        console.log(`🔍 ${message}`);
+      }
+    }
+  }
+};
+
 // API配置
 export const API_CONFIG = {
   // 主要API URL（自定义域名）
@@ -18,6 +60,8 @@ export const API_CONFIG = {
     adminExport: '/api/admin/export',
     adminStats: '/api/admin/stats',
     adminCleanup: '/api/admin/cleanup',
+    adminSettings: '/api/admin/settings',
+    adminChangePassword: '/api/admin/change-password',
     health: '/health'
   }
 };
@@ -57,16 +101,13 @@ export async function fetchWithFallback(
     credentials: 'omit', // 暂时禁用凭据以排除CORS问题
   };
 
-  console.log(`🚀 API调用: ${endpoint}`, {
-    primaryUrl,
-    fallbackUrl,
-    method: options.method || 'GET',
-    headers: enhancedOptions.headers
+  safeLog.info(`🚀 API调用: ${endpoint}`, {
+    method: options.method || 'GET'
   });
 
   try {
     // 首先尝试自定义域名
-    console.log('🔗 尝试连接自定义域名:', primaryUrl);
+    safeLog.info('🔗 尝试连接自定义域名');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -76,20 +117,20 @@ export async function fetchWithFallback(
     });
 
     clearTimeout(timeoutId);
-    console.log(`📡 自定义域名响应:`, response.status, response.statusText);
+    safeLog.info(`📡 自定义域名响应: ${response.status}`);
 
     if (response.ok) {
-      console.log('✅ 自定义域名连接成功');
+      safeLog.info('✅ 自定义域名连接成功');
       return response;
     }
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
-  } catch (error) {
-    console.warn('⚠️ 自定义域名连接失败，尝试备用域名:', error);
+  } catch {
+    safeLog.warn('⚠️ 自定义域名连接失败，尝试备用域名');
 
     try {
       // 回退到 workers.dev 域名
-      console.log('🔗 尝试连接备用域名:', fallbackUrl);
+      safeLog.info('🔗 尝试连接备用域名');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -99,16 +140,16 @@ export async function fetchWithFallback(
       });
 
       clearTimeout(timeoutId);
-      console.log(`📡 备用域名响应:`, response.status, response.statusText);
+      safeLog.info(`📡 备用域名响应: ${response.status}`);
 
       if (response.ok) {
-        console.log('✅ 备用域名连接成功');
+        safeLog.info('✅ 备用域名连接成功');
         return response;
       }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
-    } catch (fallbackError) {
-      console.error('❌ 所有API端点都无法连接:', fallbackError);
+    } catch {
+      safeLog.error('❌ 所有API端点都无法连接');
       throw new Error('无法连接到服务器，请检查网络连接或稍后重试');
     }
   }

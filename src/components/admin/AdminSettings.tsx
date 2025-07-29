@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchWithFallback } from '@/lib/config';
+import { fetchWithFallback, safeLog } from '@/lib/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,9 +28,9 @@ interface AdminSettingsProps {
 
 export default function AdminSettings({ onClose }: AdminSettingsProps) {
   const [adminInfo, setAdminInfo] = useState<AdminInfo>({
-    username: localStorage.getItem('admin_username') || 'admin',
-    email: localStorage.getItem('admin_email') || 'admin@example.com',
-    systemName: localStorage.getItem('system_name') || '业务员见客报告系统'
+    username: 'admin',
+    email: 'admin@example.com',
+    systemName: '业务员见客报告系统'
   });
 
   const [nextcloudConfig, setNextcloudConfig] = useState<NextcloudConfig>({
@@ -50,10 +50,29 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // 加载Nextcloud配置
+  // 加载配置
   useEffect(() => {
+    loadAdminSettings();
     loadNextcloudConfig();
   }, []);
+
+  const loadAdminSettings = async () => {
+    try {
+      const response = await fetchWithFallback('adminSettings');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setAdminInfo({
+          username: result.data.username,
+          email: result.data.email,
+          systemName: result.data.systemName
+        });
+      }
+    } catch (error) {
+      safeLog.error('加载管理员设置失败', error);
+      // 如果加载失败，保持默认状态
+    }
+  };
 
   const loadNextcloudConfig = async () => {
     try {
@@ -81,24 +100,36 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
     setMessage('');
 
     try {
-      // 保存到本地存储
-      localStorage.setItem('admin_username', adminInfo.username);
-      localStorage.setItem('admin_email', adminInfo.email);
-      localStorage.setItem('system_name', adminInfo.systemName);
-      
-      // 这里可以添加后端API调用来保存设置
-      // await fetchWithFallback('/api/admin/settings', {
-      //   method: 'POST',
-      //   body: JSON.stringify(adminInfo)
-      // });
-      
-      setMessage('个人信息更新成功！');
+      // 验证必要字段
+      if (!adminInfo.username || !adminInfo.email || !adminInfo.systemName) {
+        setMessage('请填写完整的管理员信息');
+        setLoading(false);
+        return;
+      }
 
-      // 刷新页面以应用系统名称更改
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    } catch {
+      // 保存到数据库
+      const response = await fetchWithFallback('adminSettings', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: adminInfo.username,
+          email: adminInfo.email,
+          systemName: adminInfo.systemName
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMessage('个人信息更新成功！');
+        // 刷新页面以应用系统名称更改
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        setMessage(result.message || '保存失败');
+      }
+    } catch (error) {
+      safeLog.error('保存管理员设置失败', error);
       setMessage('更新失败，请稍后重试');
     } finally {
       setLoading(false);
@@ -141,7 +172,7 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
         setMessage('Nextcloud功能已禁用');
       }
     } catch (error) {
-      console.error('保存Nextcloud配置失败:', error);
+      safeLog.error('保存Nextcloud配置失败', error);
       setMessage('配置更新失败，请重试');
     } finally {
       setLoading(false);
@@ -166,33 +197,29 @@ export default function AdminSettings({ onClose }: AdminSettingsProps) {
     }
 
     try {
-      // 验证当前密码
-      const currentStoredPassword = localStorage.getItem('admin_password') || 'admin123';
-      if (passwords.currentPassword !== currentStoredPassword) {
-        setMessage('当前密码错误');
-        setLoading(false);
-        return;
-      }
-
-      // 保存新密码
-      localStorage.setItem('admin_password', passwords.newPassword);
-      
-      // 这里可以添加后端API调用来保存密码
-      // await fetchWithFallback('/api/admin/change-password', {
-      //   method: 'POST',
-      //   body: JSON.stringify({
-      //     currentPassword: passwords.currentPassword,
-      //     newPassword: passwords.newPassword
-      //   })
-      // });
-      
-      setMessage('密码修改成功！');
-      setPasswords({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
+      // 调用后端API修改密码
+      const response = await fetchWithFallback('adminChangePassword', {
+        method: 'POST',
+        body: JSON.stringify({
+          currentPassword: passwords.currentPassword,
+          newPassword: passwords.newPassword
+        })
       });
-    } catch {
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMessage('密码修改成功！');
+        setPasswords({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        setMessage(result.message || '密码修改失败');
+      }
+    } catch (error) {
+      safeLog.error('修改密码失败', error);
       setMessage('密码修改失败，请稍后重试');
     } finally {
       setLoading(false);

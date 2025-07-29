@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Cloud, Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { FormData } from '@/types/form';
 import { generatePDF } from '@/lib/pdf-generator';
-import { fetchWithFallback } from '@/lib/config';
+import { fetchWithFallback, safeLog } from '@/lib/config';
 
 interface NextcloudDialogProps {
   formData: FormData;
@@ -48,7 +48,7 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
         return null;
       }
     } catch (error) {
-      console.error('获取Nextcloud配置失败:', error);
+      safeLog.error('获取Nextcloud配置失败', error);
       setMessage('获取Nextcloud配置失败，请联系管理员');
       setUploadStatus('error');
       return null;
@@ -89,10 +89,8 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
         try {
           setMessage('正在上传到Nextcloud...');
 
-          console.log('🚀 开始上传到Nextcloud:', {
+          safeLog.debug('开始上传到Nextcloud', {
             fileName,
-            configServer: currentConfig.serverUrl,
-            configUser: currentConfig.username,
             configPath: currentConfig.targetPath
           });
 
@@ -106,16 +104,16 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
             })
           });
 
-          console.log('📡 API响应状态:', response.status, response.statusText);
+          safeLog.debug('API响应状态', response.status);
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ API响应错误:', errorText);
+            safeLog.error('API响应错误', errorText);
             throw new Error(`HTTP ${response.status}: ${errorText}`);
           }
 
           const result = await response.json();
-          console.log('📦 API响应数据:', result);
+          safeLog.debug('API响应数据', result);
           
           if (result.success) {
             setUploadStatus('success');
@@ -125,7 +123,7 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
             setMessage(result.message || '上传失败，请检查配置信息');
           }
         } catch (error) {
-          console.error('❌ 网络请求失败:', error);
+          safeLog.error('网络请求失败', error);
           setUploadStatus('error');
 
           let errorMessage = '上传失败: ';
@@ -152,7 +150,7 @@ export function NextcloudDialog({ formData, onClose }: NextcloudDialogProps) {
     } catch (error) {
       setUploadStatus('error');
       setMessage('PDF生成失败，请重试');
-      console.error('PDF generation error:', error);
+      safeLog.error('PDF生成失败', error);
     } finally {
       setIsUploading(false);
     }
