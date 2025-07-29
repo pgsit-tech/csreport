@@ -54,3 +54,18 @@ CREATE TABLE IF NOT EXISTS email_logs (
 
 CREATE INDEX IF NOT EXISTS idx_email_logs_form_id ON email_logs(form_id);
 CREATE INDEX IF NOT EXISTS idx_email_logs_sent_at ON email_logs(sent_at);
+
+-- 上传日志表
+CREATE TABLE IF NOT EXISTS upload_logs (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  form_id TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  upload_path TEXT NOT NULL,
+  server_url TEXT NOT NULL,
+  uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  company_name TEXT,
+  contact_person TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_upload_logs_form_id ON upload_logs(form_id);
+CREATE INDEX IF NOT EXISTS idx_upload_logs_uploaded_at ON upload_logs(uploaded_at);
