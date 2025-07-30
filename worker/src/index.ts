@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import * as XLSX from 'xlsx';
 import { formDataToDbFormat, dbDataToFormFormat, generateQueryCode, generateId } from './utils';
 
 type Bindings = {
@@ -781,6 +782,76 @@ async function getNextcloudConfig(db: D1Database) {
   }
 }
 
+// 生成Excel文件的辅助函数
+function generateExcelFile(forms: any[]): ArrayBuffer {
+  // 创建工作簿
+  const workbook = XLSX.utils.book_new();
+
+  // 准备数据，确保中文编码正确
+  const excelData = forms.map((form, index) => ({
+    '序号': index + 1,
+    '查询码': form.queryCode || '',
+    '自定义查询码': form.customQueryCode || '',
+    '公司名称': form.companyName || '',
+    '公司地址': form.address || '',
+    '公司电话': form.phone || '',
+    '公司网站': form.website || '',
+    '联系人姓名': form.contactPerson || '',
+    '联系人手机': form.mobile || '',
+    '微信号': form.wechat || '',
+    '公司规模': form.companySize || '',
+    '办公面积': form.officeSize || '',
+    '主营业务': form.mainBusiness || '',
+    '产品服务': form.products || '',
+    '服务需求': form.serviceNeeds || '',
+    '负责业务员': form.salesperson || '',
+    '聊天记录': form.chatRecords || '',
+    '报告日期': form.reportDate || '',
+    '创建时间': form.createdAt || '',
+    '更新时间': form.updatedAt || ''
+  }));
+
+  // 创建工作表
+  const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+  // 设置列宽
+  const columnWidths = [
+    { wch: 6 },   // 序号
+    { wch: 12 },  // 查询码
+    { wch: 15 },  // 自定义查询码
+    { wch: 20 },  // 公司名称
+    { wch: 30 },  // 公司地址
+    { wch: 15 },  // 公司电话
+    { wch: 25 },  // 公司网站
+    { wch: 12 },  // 联系人姓名
+    { wch: 15 },  // 联系人手机
+    { wch: 15 },  // 微信号
+    { wch: 12 },  // 公司规模
+    { wch: 12 },  // 办公面积
+    { wch: 30 },  // 主营业务
+    { wch: 30 },  // 产品服务
+    { wch: 30 },  // 服务需求
+    { wch: 12 },  // 负责业务员
+    { wch: 40 },  // 聊天记录
+    { wch: 12 },  // 报告日期
+    { wch: 20 },  // 创建时间
+    { wch: 20 }   // 更新时间
+  ];
+  worksheet['!cols'] = columnWidths;
+
+  // 添加工作表到工作簿
+  XLSX.utils.book_append_sheet(workbook, worksheet, '客户报告数据');
+
+  // 生成Excel文件，使用UTF-8编码确保中文正常显示
+  const excelBuffer = XLSX.write(workbook, {
+    type: 'array',
+    bookType: 'xlsx',
+    compression: true
+  });
+
+  return excelBuffer;
+}
+
 // 测试Nextcloud连接
 app.get('/api/test-nextcloud', async (c) => {
   try {
@@ -1032,6 +1103,49 @@ app.post('/api/admin/change-password', async (c) => {
   } catch (error) {
     console.error('修改密码时出错:', error);
     return c.json({ success: false, message: '密码修改失败' }, 500);
+  }
+});
+
+// Excel导出接口
+app.post('/api/admin/export-excel', async (c) => {
+  try {
+    const requestData = await c.req.json();
+    let forms = [];
+
+    // 支持两种请求格式：
+    // 1. { forms: [...] } - 直接传递表单数据
+    // 2. { formIds: [...] } - 传递表单ID，需要从数据库查询
+    if (requestData.forms) {
+      forms = requestData.forms;
+    } else if (requestData.formIds && requestData.formIds.length > 0) {
+      // 从数据库查询指定的表单
+      const placeholders = requestData.formIds.map(() => '?').join(',');
+      const query = `SELECT * FROM form_submissions WHERE id IN (${placeholders})`;
+      const result = await c.env.DB.prepare(query).bind(...requestData.formIds).all();
+      forms = result.results.map(dbDataToFormFormat);
+    } else {
+      return c.json({ success: false, message: '没有数据可导出' }, 400);
+    }
+
+    if (!forms || forms.length === 0) {
+      return c.json({ success: false, message: '没有数据可导出' }, 400);
+    }
+
+    // 生成Excel文件
+    const excelBuffer = generateExcelFile(forms);
+
+    // 设置响应头
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    headers.set('Content-Disposition', `attachment; filename="客户报告导出_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Access-Control-Expose-Headers', 'Content-Disposition');
+
+    return new Response(excelBuffer, { headers });
+
+  } catch (error) {
+    console.error('Excel导出时出错:', error);
+    return c.json({ success: false, message: 'Excel导出失败，请重试' }, 500);
   }
 });
 

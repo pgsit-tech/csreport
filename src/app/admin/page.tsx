@@ -23,7 +23,8 @@ import {
   FileText,
   Settings,
   LogOut,
-  Database
+  Database,
+  FileSpreadsheet
 } from 'lucide-react';
 import { fetchWithFallback, safeLog } from '@/lib/config';
 import LoginForm from '@/components/admin/LoginForm';
@@ -189,6 +190,67 @@ export default function AdminPage() {
     }
   };
 
+  // Excel导出功能
+  const handleExcelExport = async (exportAll: boolean = false) => {
+    try {
+      let dataToExport;
+
+      if (exportAll) {
+        // 导出所有数据
+        dataToExport = filteredForms;
+      } else {
+        // 导出选中的数据
+        dataToExport = forms.filter(form => form.id && selectedForms.includes(form.id));
+
+        if (dataToExport.length === 0) {
+          alert('请先选择要导出的表单');
+          return;
+        }
+      }
+
+      safeLog.info(`正在导出${dataToExport.length}条记录到Excel...`);
+
+      // 调用后端API导出Excel
+      const response = await fetchWithFallback('adminExportExcel', {
+        method: 'POST',
+        body: JSON.stringify({
+          forms: dataToExport
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // 获取文件名
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = '客户报告导出.xlsx';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // 下载文件
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      safeLog.info('Excel导出成功');
+
+    } catch (error) {
+      safeLog.error('Excel导出失败', error);
+      alert('Excel导出失败，请重试');
+    }
+  };
+
   const handleViewForm = (form: FormData) => {
     // 在新窗口中打开表单详情
     const queryParams = new URLSearchParams({
@@ -331,14 +393,24 @@ export default function AdminPage() {
               </div>
               <div className="flex gap-2">
                 {selectedForms.length > 0 && (
-                  <Button onClick={handleExportSelected} variant="outline" className="flex items-center gap-2">
-                    <Download className="h-4 w-4" />
-                    导出选中PDF ({selectedForms.length})
-                  </Button>
+                  <>
+                    <Button onClick={handleExportSelected} variant="outline" className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      导出选中PDF ({selectedForms.length})
+                    </Button>
+                    <Button onClick={() => handleExcelExport(false)} variant="outline" className="flex items-center gap-2">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      导出选中Excel ({selectedForms.length})
+                    </Button>
+                  </>
                 )}
                 <Button onClick={handleExportAll} className="flex items-center gap-2">
                   <Download className="h-4 w-4" />
                   导出全部PDF
+                </Button>
+                <Button onClick={() => handleExcelExport(true)} variant="outline" className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  导出全部Excel
                 </Button>
               </div>
             </div>

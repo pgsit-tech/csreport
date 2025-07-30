@@ -62,6 +62,7 @@ export const API_CONFIG = {
     nextcloudTest: '/api/nextcloud/test',
     adminForms: '/api/admin/forms',
     adminExport: '/api/admin/export',
+    adminExportExcel: '/api/admin/export-excel',
     adminStats: '/api/admin/stats',
     adminCleanup: '/api/admin/cleanup',
     adminSettings: '/api/admin/settings',
