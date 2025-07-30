@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Download, Cloud } from 'lucide-react';
+import { Loader2, Download, Cloud, FileSpreadsheet } from 'lucide-react';
+import { fetchWithFallback } from '@/lib/config';
 import { NextcloudDialog } from './NextcloudDialog';
 
 interface ReportFormProps {
@@ -23,6 +24,7 @@ interface ReportFormProps {
 export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ success: boolean; queryCode?: string; message?: string } | null>(null);
   const [showNextcloudDialog, setShowNextcloudDialog] = useState(false);
   const [currentFormData, setCurrentFormData] = useState<FormData | null>(null);
@@ -109,6 +111,59 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
       alert('PDF生成失败，请重试');
     } finally {
       setIsGeneratingPDF(false);
+    }
+  };
+
+  const handleGenerateExcel = async () => {
+    setIsGeneratingExcel(true);
+    try {
+      const formData = getValues();
+      const excelData: FormData = {
+        ...formData,
+        queryCode: submitResult?.queryCode || currentFormData?.queryCode || 'PREVIEW',
+        reportDate: formData.reportDate || formatDate(new Date()),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as FormData;
+
+      // 调用后端API导出Excel
+      const response = await fetchWithFallback('adminExportExcel', {
+        method: 'POST',
+        body: JSON.stringify({
+          forms: [excelData]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // 获取文件名
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = '客户报告.xlsx';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // 下载文件
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+    } catch (error) {
+      console.error('Excel生成失败:', error);
+      alert('Excel生成失败，请重试');
+    } finally {
+      setIsGeneratingExcel(false);
     }
   };
 
@@ -428,7 +483,27 @@ export function ReportForm({ initialData, onSubmit }: ReportFormProps) {
                   </>
                 )}
               </Button>
-              
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGenerateExcel}
+                disabled={isGeneratingExcel}
+                className="flex-1 min-w-[120px]"
+              >
+                {isGeneratingExcel ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    导出Excel
+                  </>
+                )}
+              </Button>
+
               <Button
                 type="button"
                 variant="outline"
