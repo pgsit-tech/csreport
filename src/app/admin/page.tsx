@@ -222,13 +222,20 @@ export default function AdminPage() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      // 获取文件名
+      // 获取文件名，支持RFC 5987编码
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = '客户报告导出.xlsx';
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
+        // 优先尝试RFC 5987格式 (filename*=UTF-8''encoded_filename)
+        const rfc5987Match = contentDisposition.match(/filename\*=UTF-8''([^;\n]*)/);
+        if (rfc5987Match) {
+          filename = decodeURIComponent(rfc5987Match[1]);
+        } else {
+          // 回退到传统格式
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (filenameMatch) {
+            filename = filenameMatch[1].replace(/['"]/g, '');
+          }
         }
       }
 

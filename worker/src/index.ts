@@ -1171,10 +1171,14 @@ app.post('/api/admin/export-excel', async (c) => {
       filename = `客户报告批量导出_${new Date().toISOString().split('T')[0]}.xlsx`;
     }
 
-    // 设置响应头
+    // 设置响应头，使用RFC 5987编码支持中文文件名
     const headers = new Headers();
     headers.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    headers.set('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // 使用RFC 5987标准编码中文文件名
+    const encodedFilename = encodeURIComponent(filename);
+    headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
+
     headers.set('Access-Control-Allow-Origin', '*');
     headers.set('Access-Control-Expose-Headers', 'Content-Disposition');
 
