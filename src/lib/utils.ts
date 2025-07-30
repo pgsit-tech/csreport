@@ -53,7 +53,7 @@ export function generatePDFFileName(companyName: string, salesperson: string, da
   // 计算周数
   const reportDate = new Date(date);
   const weekNumber = getWeekNumber(reportDate);
-  const weekStr = `${weekNumber}Week`;
+  const weekStr = `Week ${weekNumber}`;
 
   return `${cleanSalesperson}_${weekStr}_${cleanCompanyName}_${cleanDate}.pdf`;
 }
