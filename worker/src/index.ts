@@ -782,6 +782,28 @@ async function getNextcloudConfig(db: D1Database) {
   }
 }
 
+// 计算周数的辅助函数
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+// 生成Excel文件名：业务员+周数+客户名称+日期
+function generateExcelFileName(companyName: string, salesperson: string, date: string): string {
+  const cleanCompanyName = companyName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+  // 业务员姓名保留空格，只替换其他特殊字符
+  const cleanSalesperson = (salesperson || '未知销售').replace(/[^a-zA-Z0-9\u4e00-\u9fa5 ]/g, '_');
+  const cleanDate = date.replace(/[^0-9-]/g, '');
+
+  // 计算周数
+  const reportDate = new Date(date);
+  const weekNumber = getWeekNumber(reportDate);
+  const weekStr = `${weekNumber}Week`;
+
+  return `${cleanSalesperson}_${weekStr}_${cleanCompanyName}_${cleanDate}.xlsx`;
+}
+
 // 生成Excel文件的辅助函数
 function generateExcelFile(forms: any[]): ArrayBuffer {
   // 创建工作簿
@@ -1134,10 +1156,25 @@ app.post('/api/admin/export-excel', async (c) => {
     // 生成Excel文件
     const excelBuffer = generateExcelFile(forms);
 
+    // 生成文件名
+    let filename: string;
+    if (forms.length === 1) {
+      // 单个表单：使用业务员+周数+客户名称+日期格式
+      const form = forms[0];
+      filename = generateExcelFileName(
+        form.companyName || '未知公司',
+        form.salesperson || '未知销售',
+        form.reportDate || new Date().toISOString().split('T')[0]
+      );
+    } else {
+      // 多个表单：使用批量导出格式
+      filename = `客户报告批量导出_${new Date().toISOString().split('T')[0]}.xlsx`;
+    }
+
     // 设置响应头
     const headers = new Headers();
     headers.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    headers.set('Content-Disposition', `attachment; filename="客户报告导出_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    headers.set('Content-Disposition', `attachment; filename="${filename}"`);
     headers.set('Access-Control-Allow-Origin', '*');
     headers.set('Access-Control-Expose-Headers', 'Content-Disposition');
 
